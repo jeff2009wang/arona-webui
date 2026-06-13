@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { localStorageAdapter } from '../storage';
 
 describe('localStorageAdapter', () => {
@@ -19,5 +19,29 @@ describe('localStorageAdapter', () => {
     localStorageAdapter.setItem('remove-key', 'x');
     localStorageAdapter.removeItem('remove-key');
     expect(localStorageAdapter.getItem('remove-key')).toBeNull();
+  });
+
+  it('returns null when localStorage throws on get', () => {
+    const original = Storage.prototype.getItem;
+    Storage.prototype.getItem = () => { throw new Error('quota'); };
+    expect(localStorageAdapter.getItem('x')).toBeNull();
+    Storage.prototype.getItem = original;
+  });
+
+  it('warns when localStorage throws on set', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => { throw new Error('quota'); };
+    localStorageAdapter.setItem('x', 'y');
+    expect(warnSpy).toHaveBeenCalled();
+    Storage.prototype.setItem = original;
+    warnSpy.mockRestore();
+  });
+
+  it('does not throw when localStorage throws on remove', () => {
+    const original = Storage.prototype.removeItem;
+    Storage.prototype.removeItem = () => { throw new Error('quota'); };
+    expect(() => localStorageAdapter.removeItem('x')).not.toThrow();
+    Storage.prototype.removeItem = original;
   });
 });
