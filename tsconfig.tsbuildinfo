@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/test/setup.ts","./src/types/index.ts"],"version":"5.6.3"}
+{"root":["./src/App.tsx","./src/main.tsx","./src/lib/storage.ts","./src/lib/__tests__/storage.test.ts","./src/stores/sessionStore.ts","./src/stores/settingsStore.ts","./src/stores/__tests__/sessionStore.test.ts","./src/stores/__tests__/settingsStore.test.ts","./src/test/setup.ts","./src/types/index.ts"],"version":"5.6.3"}

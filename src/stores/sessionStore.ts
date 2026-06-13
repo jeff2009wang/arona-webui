@@ -19,7 +19,12 @@ export interface SessionState {
   setStreaming: (value: boolean) => void;
 }
 
-const generateId = () => Math.random().toString(36).slice(2, 11);
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).slice(2, 11);
+};
 
 const createEmptySession = (): Session => ({
   id: generateId(),
@@ -55,13 +60,16 @@ export const useSessionStore = create<SessionState>()(
         })),
 
       deleteSession: (id) =>
-        set((state) => ({
-          sessions: state.sessions.filter((s) => s.id !== id),
-          currentSessionId:
-            state.currentSessionId === id
-              ? state.sessions.find((s) => s.id !== id)?.id ?? null
-              : state.currentSessionId,
-        })),
+        set((state) => {
+          const index = state.sessions.findIndex((s) => s.id === id);
+          const remaining = state.sessions.filter((s) => s.id !== id);
+          let nextId: string | null = state.currentSessionId;
+          if (state.currentSessionId === id) {
+            const nextSession = remaining[index] ?? remaining[index - 1] ?? remaining[0];
+            nextId = nextSession?.id ?? null;
+          }
+          return { sessions: remaining, currentSessionId: nextId };
+        }),
 
       addMessage: (sessionId, message) =>
         set((state) => ({
@@ -107,9 +115,35 @@ export const useSessionStore = create<SessionState>()(
       exportSessions: () => JSON.stringify({ sessions: get().sessions }, null, 2),
 
       importSessions: (data) => {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed.sessions)) {
-          set({ sessions: parsed.sessions, currentSessionId: parsed.sessions[0]?.id ?? null });
+        try {
+          const parsed = JSON.parse(data);
+          if (!Array.isArray(parsed.sessions)) return;
+          const validSessions = (parsed.sessions as unknown[]).filter(
+            (s): s is Session => {
+              const maybeSession = s as Record<string, unknown>;
+              return (
+                maybeSession !== null &&
+                typeof maybeSession === 'object' &&
+                typeof maybeSession.id === 'string' &&
+                typeof maybeSession.title === 'string' &&
+                Array.isArray(maybeSession.messages) &&
+                typeof maybeSession.createdAt === 'number' &&
+                typeof maybeSession.updatedAt === 'number'
+              );
+            }
+          );
+          const seen = new Set<string>();
+          const deduped = validSessions.filter((s: Session) => {
+            if (seen.has(s.id)) return false;
+            seen.add(s.id);
+            return true;
+          });
+          set({
+            sessions: deduped,
+            currentSessionId: deduped[0]?.id ?? null,
+          });
+        } catch (e) {
+          console.warn('Failed to import sessions:', e);
         }
       },
 
@@ -117,7 +151,7 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: 'arona-sessions',
-      storage: localStorageAdapter,
+      storage: localStorageAdapter as any,
     }
   )
 );

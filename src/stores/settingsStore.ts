@@ -28,7 +28,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'arona-settings',
-      storage: localStorageAdapter,
+      storage: localStorageAdapter as any,
     }
   )
 );
