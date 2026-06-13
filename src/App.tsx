@@ -9,6 +9,23 @@ import { ActionsPanel } from './components/panels/ActionsPanel';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { useSessionStore } from './stores/sessionStore';
 
+import { useUIStore } from './stores/uiStore';
+
+function MobileSettingsShortcut() {
+  const openSettings = useUIStore((s) => s.openSettings);
+  return (
+    <div className="p-4">
+      <button
+        onClick={openSettings}
+        aria-label="Open settings"
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--bubble-user-start)] to-[var(--bubble-user-end)] text-white text-sm font-bold shadow-soft-strong focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]"
+      >
+        Open Settings
+      </button>
+    </div>
+  );
+}
+
 function App() {
   const sessions = useSessionStore((s) => s.sessions);
   const createSession = useSessionStore((s) => s.createSession);
@@ -32,13 +49,7 @@ function App() {
           chat={<ChatPhoneFrame />}
           history={<HistoryPanel />}
           tools={<ActionsPanel />}
-          settings={
-            <div className="p-4">
-              <button onClick={() => {}} className="text-[var(--primary)]">
-                Open Settings
-              </button>
-            </div>
-          }
+          settings={<MobileSettingsShortcut />}
         />
         <SettingsModal />
       </div>

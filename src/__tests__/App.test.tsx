@@ -20,7 +20,11 @@ vi.mock('../components/layout/DesktopLayout', () => ({
 }));
 
 vi.mock('../components/layout/MobileLayout', () => ({
-  MobileLayout: () => <div data-testid="mobile-layout">Mobile</div>,
+  MobileLayout: ({ settings }: { settings: React.ReactNode }) => (
+    <div data-testid="mobile-layout">
+      <div data-testid="mobile-settings">{settings}</div>
+    </div>
+  ),
 }));
 
 vi.mock('../components/settings/SettingsModal', () => ({
@@ -36,6 +40,15 @@ vi.mock('../stores/sessionStore', () => ({
     const state = {
       sessions: mockSessions,
       createSession: mockCreateSession,
+    };
+    return selector ? selector(state) : state;
+  }),
+}));
+
+vi.mock('../stores/uiStore', () => ({
+  useUIStore: vi.fn((selector) => {
+    const state = {
+      openSettings: vi.fn(),
     };
     return selector ? selector(state) : state;
   }),
@@ -62,6 +75,12 @@ describe('App', () => {
   it('renders the settings modal', () => {
     render(<App />);
     expect(screen.getByTestId('settings-modal')).toBeInTheDocument();
+  });
+
+  it('renders the mobile settings shortcut', () => {
+    render(<App />);
+    expect(screen.getByTestId('mobile-settings')).toBeInTheDocument();
+    expect(screen.getByText('Open Settings')).toBeInTheDocument();
   });
 
   it('creates a session on first load when no sessions exist', () => {
