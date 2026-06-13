@@ -3,8 +3,9 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useUIStore } from '../../stores/uiStore';
 
 export function TopStatusBar() {
-  const { persona, setPersona } = useSettingsStore();
-  const { openSettings } = useUIStore();
+  const persona = useSettingsStore((s) => s.persona);
+  const setPersona = useSettingsStore((s) => s.setPersona);
+  const openSettings = useUIStore((s) => s.openSettings);
 
   return (
     <header className="sticky top-0 z-10 h-[50px] flex items-center justify-between px-5 border-b border-[var(--border)] bg-[var(--bg-card)] backdrop-blur-md shadow-soft">

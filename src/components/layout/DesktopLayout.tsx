@@ -10,7 +10,8 @@ export function DesktopLayout({
   chat: ReactNode;
   actions: ReactNode;
 }) {
-  const { isHistoryOpen, isActionsOpen } = useUIStore();
+  const isHistoryOpen = useUIStore((s) => s.isHistoryOpen);
+  const isActionsOpen = useUIStore((s) => s.isActionsOpen);
 
   return (
     <div className="hidden lg:grid lg:grid-cols-[230px_1fr_200px] gap-3 p-3 h-[calc(100vh-var(--header-height))] max-w-[1280px] mx-auto">

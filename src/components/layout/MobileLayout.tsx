@@ -20,7 +20,8 @@ export function MobileLayout({
   tools: ReactNode;
   settings: ReactNode;
 }) {
-  const { activeMobileTab, setActiveMobileTab } = useUIStore();
+  const activeMobileTab = useUIStore((s) => s.activeMobileTab);
+  const setActiveMobileTab = useUIStore((s) => s.setActiveMobileTab);
 
   return (
     <div className="lg:hidden flex flex-col h-[calc(100vh-var(--header-height))]">
