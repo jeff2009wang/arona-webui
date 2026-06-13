@@ -12,16 +12,22 @@ export interface UIState {
   setActiveMobileTab: (tab: MobileTab) => void;
   openSettings: () => void;
   closeSettings: () => void;
+  resetUI: () => void;
 }
 
-export const useUIStore = create<UIState>()((set) => ({
+const initialState = {
   isHistoryOpen: true,
   isActionsOpen: true,
-  activeMobileTab: 'chat',
+  activeMobileTab: 'chat' as MobileTab,
   isSettingsOpen: false,
+};
+
+export const useUIStore = create<UIState>()((set) => ({
+  ...initialState,
   toggleHistory: () => set((state) => ({ isHistoryOpen: !state.isHistoryOpen })),
   toggleActions: () => set((state) => ({ isActionsOpen: !state.isActionsOpen })),
   setActiveMobileTab: (tab) => set({ activeMobileTab: tab }),
   openSettings: () => set({ isSettingsOpen: true }),
   closeSettings: () => set({ isSettingsOpen: false }),
+  resetUI: () => set(initialState),
 }));
