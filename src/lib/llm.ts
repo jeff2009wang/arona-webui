@@ -45,7 +45,7 @@ export async function streamChatCompletion({
   });
 
   if (!response.ok) {
-    const text = await response.text();
+    const text = await response.text().catch(() => '');
     throw new LLMError(text || `HTTP ${response.status}`, response.status);
   }
 
@@ -55,32 +55,55 @@ export async function streamChatCompletion({
   const decoder = new TextDecoder();
   let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith('data:')) continue;
-
-      const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') return;
-
-      try {
-        const parsed = JSON.parse(data);
-        const delta = parsed.choices?.[0]?.delta;
-        if (delta?.content) onChunk(delta.content);
-        if (delta?.tool_calls && onToolCall) {
-          const tc = delta.tool_calls[0];
-          onToolCall({ id: tc.id, name: tc.function?.name, arguments: tc.function?.arguments });
-        }
-      } catch {
-        // Ignore malformed lines
+      for (const line of lines) {
+        processSSELine(line, onChunk, onToolCall);
       }
     }
+
+    // Process any remaining buffer after stream ends
+    if (buffer.trim()) {
+      processSSELine(buffer, onChunk, onToolCall);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function processSSELine(
+  line: string,
+  onChunk: (chunk: string) => void,
+  onToolCall?: (toolCall: { id: string; name: string; arguments: string }) => void
+) {
+  const trimmed = line.trim();
+  if (!trimmed || !trimmed.startsWith('data:')) return;
+
+  const data = trimmed.slice(5).trim();
+  if (data === '[DONE]') return;
+
+  try {
+    const parsed = JSON.parse(data);
+    const delta = parsed.choices?.[0]?.delta;
+    if (delta?.content) onChunk(delta.content);
+    if (delta?.tool_calls && onToolCall) {
+      for (const tc of delta.tool_calls) {
+        const id = tc.id ?? 'unknown';
+        const name = tc.function?.name ?? '';
+        const args = tc.function?.arguments ?? '';
+        if (name || args) {
+          onToolCall({ id, name, arguments: args });
+        }
+      }
+    }
+  } catch {
+    // Ignore malformed lines
   }
 }
