@@ -27,7 +27,11 @@ export function ToolCard({ toolCall }: ToolCardProps) {
       </div>
 
       <div className="text-[10px] text-[var(--text-secondary)] px-2 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl font-mono">
-        {expanded ? JSON.stringify(toolCall.arguments, null, 2) : toolCall.result ? String(toolCall.result).slice(0, 60) : 'Running...'}
+        {expanded
+          ? JSON.stringify(toolCall.arguments, null, 2)
+          : toolCall.result !== undefined
+          ? String(toolCall.result).slice(0, 60)
+          : 'Running...'}
       </div>
 
       <button

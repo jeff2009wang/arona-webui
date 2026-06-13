@@ -145,6 +145,42 @@ describe('ChatPhoneFrame', () => {
     expect(screen.getByTestId('typing-indicator')).toBeInTheDocument();
   });
 
+  it('renders tool messages with tool cards', () => {
+    const sessionId = useSessionStore.getState().createSession();
+    useSessionStore.setState({
+      currentSessionId: sessionId,
+      sessions: [
+        {
+          id: sessionId,
+          title: 'Test Chat',
+          messages: [
+            {
+              id: 'msg-tool',
+              role: 'tool',
+              content: '',
+              createdAt: Date.now(),
+              toolCalls: [
+                {
+                  id: 'tc-1',
+                  name: 'search_web',
+                  arguments: { query: 'BA' },
+                  status: 'success',
+                  startedAt: Date.now(),
+                  finishedAt: Date.now(),
+                },
+              ],
+            },
+          ],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    });
+
+        render(<ChatPhoneFrame />);
+        expect(screen.getByTestId('tool-card')).toHaveTextContent('search_web');
+    });
+
   it('does not show typing indicator when not streaming', () => {
     const sessionId = useSessionStore.getState().createSession();
     useSessionStore.setState({

@@ -13,7 +13,13 @@ function renderMessage(message: Message) {
   if (message.role === 'user') return <UserBubble key={message.id} message={message} />;
   if (message.role === 'assistant') return <AssistantBubble key={message.id} message={message} />;
   if (message.role === 'tool' && message.toolCalls) {
-    return message.toolCalls.map((tc) => <ToolCard key={tc.id} toolCall={tc} />);
+    return (
+      <div key={message.id} className="flex flex-col gap-2">
+        {message.toolCalls.map((tc) => (
+          <ToolCard key={tc.id} toolCall={tc} />
+        ))}
+      </div>
+    );
   }
   return null;
 }
