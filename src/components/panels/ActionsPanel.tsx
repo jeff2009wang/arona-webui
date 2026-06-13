@@ -4,8 +4,11 @@ import { useUIStore } from '../../stores/uiStore';
 import { useLLM } from '../../hooks/useLLM';
 
 export function ActionsPanel() {
-  const { sessions, currentSessionId, isStreaming, clearSession } = useSessionStore();
-  const { openSettings } = useUIStore();
+  const sessions = useSessionStore((s) => s.sessions);
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
+  const isStreaming = useSessionStore((s) => s.isStreaming);
+  const clearSession = useSessionStore((s) => s.clearSession);
+  const openSettings = useUIStore((s) => s.openSettings);
   const { stop } = useLLM();
 
   const session = sessions.find((s) => s.id === currentSessionId);
@@ -56,7 +59,7 @@ export function ActionsPanel() {
             <button
               onClick={() => currentSessionId && clearSession(currentSessionId)}
               aria-label="Clear current chat"
-              className="w-full py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-main)] text-[10px] font-semibold flex items-center justify-center gap-1 hover:border-red-400 hover:text-red-400 transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+              className="w-full py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-main)] text-[10px] font-semibold flex items-center justify-center gap-1 hover:border-[var(--danger)] hover:text-[var(--danger)] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
             >
               <Trash2 size={11} /> Clear
             </button>

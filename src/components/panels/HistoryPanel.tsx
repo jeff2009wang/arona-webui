@@ -2,7 +2,10 @@ import { Plus } from 'lucide-react';
 import { useSessionStore } from '../../stores/sessionStore';
 
 export function HistoryPanel() {
-  const { sessions, currentSessionId, createSession, selectSession } = useSessionStore();
+  const sessions = useSessionStore((s) => s.sessions);
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
+  const createSession = useSessionStore((s) => s.createSession);
+  const selectSession = useSessionStore((s) => s.selectSession);
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-card)] border border-[var(--border)] rounded-[26px] shadow-soft overflow-hidden">
@@ -36,7 +39,7 @@ export function HistoryPanel() {
                 : 'border-transparent hover:bg-[var(--tool-bg)]'
             }`}
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--primary-light)] to-[var(--primary)] grid place-items-center text-sm shrink-0 shadow-soft">
+            <div aria-hidden="true" className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--primary-light)] to-[var(--primary)] grid place-items-center text-sm shrink-0 shadow-soft">
               🎓
             </div>
             <div className="flex-1 min-w-0">

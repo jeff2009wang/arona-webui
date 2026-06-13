@@ -23,6 +23,7 @@
     --bubble-assistant: #FFFFFF;
     --tool-bg: #F4FBFF;
     --hud: rgba(53, 184, 255, 0.12);
+    --danger: #f87171;
     --status-online: #4ade80;
   }
 
@@ -46,6 +47,7 @@
     --bubble-assistant: #1B2638;
     --tool-bg: #131D2F;
     --hud: rgba(105, 183, 255, 0.08);
+    --danger: #f87171;
     --status-online: #4ade80;
   }
 

@@ -21,14 +21,15 @@ describe('HistoryPanel', () => {
   });
 
   it('renders sessions', () => {
+    const now = new Date('2026-06-13T12:00:00Z').getTime();
     useSessionStore.setState({
       sessions: [
         {
           id: 's1',
           title: 'First Chat',
           messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         },
       ],
       currentSessionId: null,
@@ -40,7 +41,7 @@ describe('HistoryPanel', () => {
   });
 
   it('shows session title, last message, and date', () => {
-    const now = Date.now();
+    const now = new Date('2026-06-13T12:00:00Z').getTime();
     useSessionStore.setState({
       sessions: [
         {
@@ -60,18 +61,19 @@ describe('HistoryPanel', () => {
 
     expect(screen.getByText('Test Chat')).toBeInTheDocument();
     expect(screen.getByText('Hello world this is a message'.slice(0, 30))).toBeInTheDocument();
-    expect(screen.getByText(new Date(now).toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText('2026/6/13')).toBeInTheDocument();
   });
 
   it('shows "No messages" when session has no messages', () => {
+    const now = new Date('2026-06-13T12:00:00Z').getTime();
     useSessionStore.setState({
       sessions: [
         {
           id: 's1',
           title: 'Empty Chat',
           messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         },
       ],
       currentSessionId: null,
@@ -83,21 +85,22 @@ describe('HistoryPanel', () => {
   });
 
   it('highlights selected session', () => {
+    const now = new Date('2026-06-13T12:00:00Z').getTime();
     useSessionStore.setState({
       sessions: [
         {
           id: 's1',
           title: 'Chat One',
           messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         },
         {
           id: 's2',
           title: 'Chat Two',
           messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         },
       ],
       currentSessionId: 's2',
@@ -128,21 +131,22 @@ describe('HistoryPanel', () => {
   });
 
   it('selects session when clicked', () => {
+    const now = new Date('2026-06-13T12:00:00Z').getTime();
     useSessionStore.setState({
       sessions: [
         {
           id: 's1',
           title: 'Chat One',
           messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         },
         {
           id: 's2',
           title: 'Chat Two',
           messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         },
       ],
       currentSessionId: 's1',
@@ -157,14 +161,15 @@ describe('HistoryPanel', () => {
   });
 
   it('has a list container with role list', () => {
+    const now = new Date('2026-06-13T12:00:00Z').getTime();
     useSessionStore.setState({
       sessions: [
         {
           id: 's1',
           title: 'Chat One',
           messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         },
       ],
       currentSessionId: null,
