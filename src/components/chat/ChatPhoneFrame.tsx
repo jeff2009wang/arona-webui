@@ -26,7 +26,9 @@ function renderMessage(message: Message) {
 
 export function ChatPhoneFrame() {
   const persona = useSettingsStore((state) => state.persona);
-  const { currentSessionId, sessions, isStreaming } = useSessionStore();
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
+  const sessions = useSessionStore((s) => s.sessions);
+  const isStreaming = useSessionStore((s) => s.isStreaming);
   const { sendMessage, stop } = useLLM();
 
   const session = sessions.find((s) => s.id === currentSessionId);

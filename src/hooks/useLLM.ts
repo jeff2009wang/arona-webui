@@ -16,7 +16,9 @@ export function useLLM() {
       persona: state.persona,
     }))
   );
-  const { addMessage, updateMessage, setStreaming } = useSessionStore();
+  const addMessage = useSessionStore((s) => s.addMessage);
+  const updateMessage = useSessionStore((s) => s.updateMessage);
+  const setStreaming = useSessionStore((s) => s.setStreaming);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
