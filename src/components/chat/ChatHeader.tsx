@@ -18,7 +18,7 @@ export function ChatHeader({ name, status, avatar, onRegenerate, onStop }: ChatH
         <div>
           <div className="text-sm font-bold text-[var(--text-main)]">{name}</div>
           <div className="flex items-center gap-1 text-[10px] text-[var(--primary)] font-semibold">
-            <span className="w-[5px] h-[5px] rounded-full bg-green-400" />
+            <span className="w-[5px] h-[5px] rounded-full bg-[var(--status-online)]" />
             {status}
           </div>
         </div>
@@ -26,20 +26,22 @@ export function ChatHeader({ name, status, avatar, onRegenerate, onStop }: ChatH
       <div className="flex items-center gap-1">
         <button
           aria-label="Regenerate response"
-          onClick={onRegenerate}
+          onClick={() => onRegenerate?.()}
           className="w-8 h-8 rounded-[9px] border border-[var(--border)] bg-[var(--bg-card)] grid place-items-center text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors shadow-soft focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
         >
           <RefreshCw size={14} />
         </button>
         <button
           aria-label="Stop generation"
-          onClick={onStop}
+          onClick={() => onStop?.()}
           className="w-8 h-8 rounded-[9px] border border-[var(--border)] bg-[var(--bg-card)] grid place-items-center text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors shadow-soft focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
         >
           <Square size={12} />
         </button>
         <button
           aria-label="More options"
+          disabled
+          title="More options"
           className="w-8 h-8 rounded-[9px] border border-[var(--border)] bg-[var(--bg-card)] grid place-items-center text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors shadow-soft focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
         >
           <MoreVertical size={14} />

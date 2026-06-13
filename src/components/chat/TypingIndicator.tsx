@@ -5,9 +5,21 @@ export function TypingIndicator() {
         🎓
       </div>
       <div className="flex items-center gap-1 px-4 py-3 rounded-[18px] rounded-tl-[5px] bg-[var(--bubble-assistant)] border border-[var(--border)] shadow-soft">
-        <span className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] animate-bounce" style={{ animationDelay: '0ms' }} />
-        <span className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] animate-bounce" style={{ animationDelay: '200ms' }} />
-        <span className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] animate-bounce" style={{ animationDelay: '400ms' }} />
+        <span
+          data-testid="typing-dot"
+          className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] motion-safe:animate-bounce"
+          style={{ animationDelay: '0ms' }}
+        />
+        <span
+          data-testid="typing-dot"
+          className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] motion-safe:animate-bounce"
+          style={{ animationDelay: '200ms' }}
+        />
+        <span
+          data-testid="typing-dot"
+          className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] motion-safe:animate-bounce"
+          style={{ animationDelay: '400ms' }}
+        />
       </div>
     </div>
   );
