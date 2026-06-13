@@ -3,11 +3,57 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg-page: #F4FBFF;
+    --bg-page-end: #EAF7FF;
+    --bg-card: rgba(255, 255, 255, 0.92);
+    --border: rgba(189, 238, 255, 0.7);
+    --border-strong: #BDEEFF;
+    --primary: #35B8FF;
+    --primary-light: #4CCBFF;
+    --accent: #FF8BA7;
+    --text-main: #1E2D3D;
+    --text-secondary: #6B8A9E;
+    --text-muted: #9AB8CC;
+    --shadow: rgba(53, 156, 215, 0.10);
+    --shadow-strong: rgba(53, 156, 215, 0.16);
+    --bubble-user-start: #4CCBFF;
+    --bubble-user-end: #35B8FF;
+    --bubble-assistant: #FFFFFF;
+    --tool-bg: #F4FBFF;
+    --hud: rgba(53, 184, 255, 0.12);
+  }
+
+  [data-theme='plana'] {
+    --bg-page: #0F1724;
+    --bg-page-end: #131D2F;
+    --bg-card: rgba(27, 38, 56, 0.85);
+    --border: rgba(105, 183, 255, 0.22);
+    --border-strong: rgba(105, 183, 255, 0.35);
+    --primary: #69B7FF;
+    --primary-light: #8DA8FF;
+    --accent: #A78BFA;
+    --text-main: #E8F1FA;
+    --text-secondary: #9FB8D4;
+    --text-muted: #6B85A3;
+    --shadow: rgba(0, 0, 0, 0.25);
+    --shadow-strong: rgba(0, 0, 0, 0.35);
+    --bubble-user-start: #69B7FF;
+    --bubble-user-end: #5A9CE8;
+    --bubble-assistant: #1B2638;
+    --tool-bg: #131D2F;
+    --hud: rgba(105, 183, 255, 0.08);
+  }
+
   html {
     font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
+
   body {
     margin: 0;
     min-height: 100vh;
+    background: linear-gradient(165deg, var(--bg-page) 0%, var(--bg-page-end) 100%);
+    color: var(--text-main);
   }
 }

@@ -1,8 +1,10 @@
+import { ThemeProvider } from './components/layout/ThemeProvider';
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <h1 className="text-3xl font-bold text-blue-600">Arona Chat</h1>
-    </div>
+    <ThemeProvider>
+      <div className="min-h-screen">Arona Chat</div>
+    </ThemeProvider>
   );
 }
 
