@@ -1,16 +1,30 @@
 import { useCallback, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { streamChatCompletion, LLMError } from '../lib/llm';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useSessionStore } from '../stores/sessionStore';
 import type { Message } from '../types';
 
 export function useLLM() {
-  const settings = useSettingsStore();
+  const settings = useSettingsStore(
+    useShallow((state) => ({
+      baseUrl: state.baseUrl,
+      apiKey: state.apiKey,
+      model: state.model,
+      temperature: state.temperature,
+      systemPrompt: state.systemPrompt,
+      persona: state.persona,
+    }))
+  );
   const { addMessage, updateMessage, setStreaming } = useSessionStore();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
     async (sessionId: string, content: string) => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
       const userMessage: Message = {
         id: crypto.randomUUID(),
         role: 'user',
@@ -33,6 +47,7 @@ export function useLLM() {
       addMessage(sessionId, assistantMessage);
       setStreaming(true);
 
+      const contentRef = { current: '' };
       abortControllerRef.current = new AbortController();
 
       try {
@@ -40,18 +55,22 @@ export function useLLM() {
           settings,
           messages: session.messages.filter((m) => m.role === 'user' || m.role === 'assistant'),
           onChunk: (chunk) => {
+            contentRef.current += chunk;
             updateMessage(sessionId, assistantMessage.id, {
-              content: assistantMessage.content + chunk,
+              content: contentRef.current,
             });
-            assistantMessage.content += chunk;
           },
           signal: abortControllerRef.current.signal,
         });
       } catch (error) {
-        updateMessage(sessionId, assistantMessage.id, {
-          content: error instanceof LLMError ? error.message : 'Unknown error',
-          status: 'error',
-        });
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          // User stopped generation - keep current content
+        } else {
+          updateMessage(sessionId, assistantMessage.id, {
+            content: error instanceof LLMError ? error.message : 'Unknown error',
+            status: 'error',
+          });
+        }
       } finally {
         setStreaming(false);
         abortControllerRef.current = null;
@@ -62,6 +81,7 @@ export function useLLM() {
 
   const stop = useCallback(() => {
     abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setStreaming(false);
   }, [setStreaming]);
 
