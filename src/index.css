@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    --header-height: 50px;
     --bg-page: #F4FBFF;
     --bg-page-end: #EAF7FF;
     --bg-card: rgba(255, 255, 255, 0.92);
@@ -25,6 +26,7 @@
   }
 
   [data-theme='plana'] {
+    --header-height: 50px;
     --bg-page: #0F1724;
     --bg-page-end: #131D2F;
     --bg-card: rgba(27, 38, 56, 0.85);
@@ -55,5 +57,13 @@
     min-height: 100vh;
     background: linear-gradient(165deg, var(--bg-page) 0%, var(--bg-page-end) 100%);
     color: var(--text-main);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
