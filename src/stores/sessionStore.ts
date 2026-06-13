@@ -16,6 +16,8 @@ export interface SessionState {
   clearSession: (id: string) => void;
   exportSessions: () => string;
   importSessions: (data: string) => void;
+  exportToFile: () => void;
+  importFromFile: (file: File) => void;
   setStreaming: (value: boolean) => void;
 }
 
@@ -145,6 +147,25 @@ export const useSessionStore = create<SessionState>()(
         } catch (e) {
           console.warn('Failed to import sessions:', e);
         }
+      },
+
+      exportToFile: () => {
+        const blob = new Blob([get().exportSessions()], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `arona-sessions-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+
+      importFromFile: (file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target?.result as string;
+          get().importSessions(text);
+        };
+        reader.readAsText(file);
       },
 
       setStreaming: (value) => set({ isStreaming: value }),

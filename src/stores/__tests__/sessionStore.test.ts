@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSessionStore } from '../sessionStore';
 
 describe('sessionStore', () => {
@@ -158,5 +158,56 @@ describe('sessionStore', () => {
 
     const session = useSessionStore.getState().sessions[0];
     expect(session.title).toBe('This is a long user message th');
+  });
+
+  it('exportToFile creates a blob download with correct filename pattern', () => {
+    const createElementSpy = vi.spyOn(document, 'createElement');
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+
+    useSessionStore.getState().createSession();
+    useSessionStore.getState().exportToFile();
+
+    const anchor = createElementSpy.mock.results.find(
+      (r: { value: unknown }) => r.value instanceof HTMLAnchorElement
+    )?.value as HTMLAnchorElement;
+
+    expect(anchor).toBeDefined();
+    expect(anchor.download).toMatch(/^arona-sessions-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(anchor.href).toMatch(/^blob:/);
+    expect(clickSpy).toHaveBeenCalled();
+    expect(revokeSpy).toHaveBeenCalled();
+
+    createElementSpy.mockRestore();
+    clickSpy.mockRestore();
+    revokeSpy.mockRestore();
+    createObjectURLSpy.mockRestore();
+  });
+
+  it('importFromFile reads a valid JSON file and imports sessions', async () => {
+    const id = useSessionStore.getState().createSession();
+    useSessionStore.getState().renameSession(id, 'Export Chat');
+    useSessionStore.getState().addMessage(id, {
+      id: 'm1',
+      role: 'user',
+      content: 'hello',
+      createdAt: Date.now(),
+    });
+
+    const exported = useSessionStore.getState().exportSessions();
+
+    useSessionStore.setState({ sessions: [], currentSessionId: null });
+
+    const file = new File([exported], 'sessions.json', { type: 'application/json' });
+
+    useSessionStore.getState().importFromFile(file);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const state = useSessionStore.getState();
+    expect(state.sessions).toHaveLength(1);
+    expect(state.sessions[0].title).toBe('Export Chat');
+    expect(state.sessions[0].messages).toHaveLength(1);
   });
 });
