@@ -15,6 +15,9 @@ export function useLLM() {
       maxTokens: state.maxTokens,
       systemPrompt: state.systemPrompt,
       persona: state.persona,
+      enableCgBackground: state.enableCgBackground,
+      backgroundOpacity: state.backgroundOpacity,
+      backgroundBlur: state.backgroundBlur,
     }))
   );
   const addMessage = useSessionStore((s) => s.addMessage);

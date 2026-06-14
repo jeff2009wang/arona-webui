@@ -48,7 +48,6 @@ function App() {
         <MobileLayout
           chat={<ChatPhoneFrame />}
           history={<HistoryPanel />}
-          tools={<ActionsPanel />}
           settings={<MobileSettingsShortcut />}
         />
         <SettingsModal />
