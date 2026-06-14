@@ -7,13 +7,6 @@ vi.mock('../components/layout/ThemeProvider', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('../components/layout/TopStatusBar', () => ({
-  TopStatusBar: () => (
-    <header data-testid="top-status-bar">
-      <div>ARONA CHAT</div>
-    </header>
-  ),
-}));
 
 vi.mock('../components/layout/DesktopLayout', () => ({
   DesktopLayout: () => <div data-testid="desktop-layout">Desktop</div>,
@@ -58,12 +51,6 @@ describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSessions.length = 0;
-  });
-
-  it('renders the top status bar with ARONA CHAT', () => {
-    render(<App />);
-    expect(screen.getByTestId('top-status-bar')).toBeInTheDocument();
-    expect(screen.getByText('ARONA CHAT')).toBeInTheDocument();
   });
 
   it('renders desktop and mobile layouts', () => {
