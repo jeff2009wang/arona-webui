@@ -347,9 +347,96 @@ public/assets/local/backgrounds/plana-light.png
 
 ---
 
-## 12. 不在本次范围内
+## 12. 多模态图片上传
 
-- 多模态（图片上传）
-- Markdown 渲染升级
+### 范围
+
+支持用户在输入框附加图片，随文字消息一起发送给支持 vision 的模型（如 gpt-4o）。不支持视频、音频、文件。
+
+### UI
+
+`ChatComposer` 输入栏左侧增加图片附加按钮（📎 或相机图标，Lucide `ImagePlus`）：
+
+- 点击触发 `<input type="file" accept="image/*" multiple>`
+- 选图后在输入栏上方显示缩略图预览行（固定高 56px，横向滚动）
+- 每张缩略图右上角有 × 删除按钮
+- 发送后缩略图清空
+- 支持粘贴（`paste` 事件读取 `ClipboardEvent.clipboardData.files`）
+- 支持拖拽到输入框区域
+
+### 消息气泡内图片展示
+
+用户气泡中图片显示在文字上方，`max-width: 240px; border-radius: 12px`，点击可放大（简单 `<dialog>` 全屏预览，点击关闭）。
+
+### 数据编码
+
+图片转 base64（`FileReader.readAsDataURL`），存入消息的 `images` 字段：
+
+```ts
+interface Message {
+  // 新增
+  images?: string[];  // base64 data URLs
+}
+```
+
+发送给 API 时构造 OpenAI vision content array：
+
+```ts
+content: [
+  { type: 'text', text: userText },
+  ...images.map(url => ({ type: 'image_url', image_url: { url } }))
+]
+```
+
+### 限制
+
+- 单张图片客户端不做压缩（由用户自行控制大小）
+- 不持久化图片到 localStorage（base64 太大；图片仅在当前会话内存中存在，刷新后消失）
+- 模型不支持 vision 时，图片附件 UI 仍可见，但 API 调用可能报错（用户自行判断）
+
+---
+
+## 13. Markdown 渲染
+
+### 范围
+
+AI 回复气泡（`AssistantBubble`）渲染 Markdown。用户气泡不渲染（纯文本）。
+
+### 库选择
+
+使用 `react-markdown`（MIT 许可）+ `remark-gfm`（GFM 表格、任务列表、删除线）。不引入 `rehype-highlight`，代码块用 CSS 样式区分即可（避免引入大型语法高亮库）。
+
+```
+pnpm add react-markdown remark-gfm
+```
+
+### 渲染组件定制
+
+`AssistantBubble` 内使用 `<ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>`，自定义以下元素样式使其符合 v4 玻璃主题：
+
+| 元素 | 样式要点 |
+|------|---------|
+| `p` | `margin-bottom: 0.5em`，最后一个 `p` 无底边距 |
+| `code`（行内） | `font-family: monospace; background: var(--tool-bg); border-radius: 4px; padding: 1px 5px; font-size: 0.85em` |
+| `pre > code`（块） | `display: block; background: rgba(0,0,0,.06); border-radius: 10px; padding: 10px 12px; overflow-x: auto; font-size: 11px; line-height: 1.55` Plana 下 `background: rgba(255,255,255,.04)` |
+| `ul / ol` | `padding-left: 1.2em; margin: 0.4em 0` |
+| `li` | `margin-bottom: 0.2em` |
+| `strong` | `font-weight: 700; color: var(--text-main)` |
+| `a` | `color: var(--primary); text-decoration: underline` |
+| `blockquote` | `border-left: 3px solid var(--primary); padding-left: 10px; color: var(--text-sub); margin: 0.5em 0` |
+| `table` | `border-collapse: collapse; font-size: 11px; width: 100%` |
+| `th / td` | `border: 1px solid var(--line); padding: 5px 9px` |
+| `th` | `background: var(--tool-bg); font-weight: 700` |
+
+### 打字机效果兼容
+
+流式输出时 `content` 是不断追加的字符串，`ReactMarkdown` 每次 re-render 即可，无需特殊处理。末尾未闭合的 Markdown 符号会被 `remark` 容错处理（不会崩溃）。
+
+---
+
+## 14. 不在本次范围内
+
 - 消息编辑 / 重新生成
 - PWA / 离线支持
+- 代码块语法高亮（保留纯色块样式）
+- 图片压缩 / 持久化
