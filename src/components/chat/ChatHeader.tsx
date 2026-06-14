@@ -1,52 +1,92 @@
-import { RefreshCw, Square, MoreVertical } from 'lucide-react';
+import { Square } from 'lucide-react';
 
 interface ChatHeaderProps {
   name: string;
   status: string;
   avatar: string;
-  onRegenerate?: () => void;
-  onStop?: () => void;
+  onStop: () => void;
+  isStreaming: boolean;
+  model: string;
 }
 
-export function ChatHeader({ name, status, avatar, onRegenerate, onStop }: ChatHeaderProps) {
+export function ChatHeader({ name, status, avatar, onStop, isStreaming, model }: ChatHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-4 pt-4 pb-3 mt-2 border-b border-[var(--border)]">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[var(--primary-light)] to-[var(--primary)] grid place-items-center text-lg border-2 border-[var(--bg-card)] shadow-soft-strong">
-          {avatar}
+    <div
+      className="flex items-center gap-3 px-4 py-3"
+      style={{
+        borderBottom: '1px solid var(--line-soft)',
+        background: 'var(--card-header)',
+        backdropFilter: 'blur(8px)',
+        flexShrink: 0,
+      }}
+    >
+      {/* Avatar */}
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <img
+          src={avatar}
+          alt={name}
+          width={40}
+          height={40}
+          style={{
+            borderRadius: '50%',
+            boxShadow: '0 3px 12px var(--shadow)',
+          }}
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = 'none';
+          }}
+        />
+        {/* Online indicator */}
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute', bottom: 1, right: 1,
+            width: 10, height: 10, borderRadius: '50%',
+            background: 'var(--status-ok)', border: '2px solid white',
+          }}
+        />
+      </div>
+
+      {/* Name + status */}
+      <div className="flex-1 min-w-0">
+        <div className="text-[14px] font-black truncate" style={{ color: 'var(--text-main)' }}>
+          {name}
         </div>
-        <div>
-          <div className="text-sm font-bold text-[var(--text-main)]">{name}</div>
-          <div className="flex items-center gap-1 text-[10px] text-[var(--primary)] font-semibold">
-            <span className="w-[5px] h-[5px] rounded-full bg-[var(--status-online)]" />
-            {status}
-          </div>
+        <div className="text-[10px] flex items-center gap-1 mt-0.5" style={{ color: 'var(--text-sub)' }}>
+          <span
+            aria-hidden="true"
+            style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--status-ok)', flexShrink: 0 }}
+          />
+          {status}
         </div>
       </div>
-      <div className="flex items-center gap-1">
+
+      {/* Model tag */}
+      <span
+        className="text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-full"
+        style={{
+          background: 'var(--tool-bg)',
+          border: '1px solid var(--line)',
+          color: 'var(--primary)',
+        }}
+      >
+        {model}
+      </span>
+
+      {/* Stop button — only during streaming */}
+      {isStreaming && (
         <button
-          aria-label="Regenerate response"
-          onClick={() => onRegenerate?.()}
-          className="w-8 h-8 rounded-[9px] border border-[var(--border)] bg-[var(--bg-card)] grid place-items-center text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors shadow-soft focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
-        >
-          <RefreshCw size={14} />
-        </button>
-        <button
+          onClick={onStop}
           aria-label="Stop generation"
-          onClick={() => onStop?.()}
-          className="w-8 h-8 rounded-[9px] border border-[var(--border)] bg-[var(--bg-card)] grid place-items-center text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors shadow-soft focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+          className="w-8 h-8 rounded-full grid place-items-center transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+          style={{
+            background: 'var(--tool-bg)',
+            border: '1px solid var(--line)',
+            color: 'var(--text-sub)',
+          }}
         >
           <Square size={12} />
         </button>
-        <button
-          aria-label="More options"
-          disabled
-          title="More options"
-          className="w-8 h-8 rounded-[9px] border border-[var(--border)] bg-[var(--bg-card)] grid place-items-center text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors shadow-soft focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
-        >
-          <MoreVertical size={14} />
-        </button>
-      </div>
+      )}
     </div>
   );
 }
