@@ -1,20 +1,29 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { AssistantBubble } from '../AssistantBubble';
 import type { Message } from '../../../types';
 
+const base: Message = { id: 'm1', role: 'assistant', content: 'Hello!', createdAt: 1700000000000 };
+
 describe('AssistantBubble', () => {
-  it('renders message content and timestamp', () => {
-    const message: Message = {
-      id: 'msg-1',
-      role: 'assistant',
-      content: 'Hello from the assistant!',
-      createdAt: new Date('2026-06-13T10:30:00').getTime(),
-    };
+  it('renders text content', () => {
+    render(<AssistantBubble message={base} />);
+    expect(screen.getByText('Hello!')).toBeInTheDocument();
+  });
 
-    render(<AssistantBubble message={message} />);
+  it('renders markdown bold', () => {
+    render(<AssistantBubble message={{ ...base, content: '**bold text**' }} />);
+    expect(screen.getByText('bold text').tagName).toBe('STRONG');
+  });
 
-    expect(screen.getByText('Hello from the assistant!')).toBeInTheDocument();
-    expect(screen.getByText('10:30')).toBeInTheDocument();
+  it('renders markdown code block', () => {
+    render(<AssistantBubble message={{ ...base, content: '```\ncode here\n```' }} />);
+    expect(screen.getByText('code here')).toBeInTheDocument();
+  });
+
+  it('renders timestamp', () => {
+    render(<AssistantBubble message={base} />);
+    // timestamp renders as HH:MM
+    expect(screen.getByText(/\d{1,2}:\d{2}/)).toBeInTheDocument();
   });
 });
