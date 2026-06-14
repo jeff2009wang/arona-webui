@@ -43,7 +43,6 @@ function App() {
         <DesktopLayout
           history={<HistoryPanel />}
           chat={<ChatPhoneFrame />}
-          actions={<ActionsPanel />}
         />
         <MobileLayout
           chat={<ChatPhoneFrame />}
