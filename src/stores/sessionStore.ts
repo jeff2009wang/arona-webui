@@ -173,6 +173,13 @@ export const useSessionStore = create<SessionState>()(
     {
       name: 'arona-sessions',
       storage: localStorageAdapter as any,
+      partialize: (state) => ({
+        ...state,
+        sessions: state.sessions.map((s) => ({
+          ...s,
+          messages: s.messages.map(({ images: _images, ...m }) => m),
+        })),
+      }),
     }
   )
 );

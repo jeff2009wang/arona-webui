@@ -17,6 +17,7 @@ export interface Message {
   createdAt: number;
   toolCalls?: ToolCall[];
   status?: 'sending' | 'sent' | 'error';
+  images?: string[]; // base64 data URLs, not persisted to localStorage
 }
 
 export interface Session {
@@ -33,6 +34,10 @@ export interface Settings {
   apiKey: string;
   model: string;
   temperature: number;
+  maxTokens: number;
   systemPrompt: string;
   persona: Persona;
+  enableCgBackground: boolean;
+  backgroundOpacity: number; // 0–1, scales theme overlay alpha
+  backgroundBlur: number;    // px, applied to background layer only
 }
