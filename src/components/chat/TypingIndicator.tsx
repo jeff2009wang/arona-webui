@@ -1,9 +1,16 @@
-export function TypingIndicator() {
+import type { Persona } from '../../types';
+
+const AVATAR: Record<Persona, string> = {
+  arona: '/assets/placeholders/avatar-arona.svg',
+  plana: '/assets/placeholders/avatar-plana.svg',
+};
+
+export function TypingIndicator({ persona = 'arona' }: { persona?: Persona }) {
   return (
     <div className="flex items-end gap-2">
       <img
-        src="/assets/placeholders/avatar-arona.svg"
-        alt="Typing"
+        src={AVATAR[persona]}
+        alt={persona === 'arona' ? 'Arona' : 'Plana'}
         width={28}
         height={28}
         style={{ borderRadius: '50%', flexShrink: 0 }}

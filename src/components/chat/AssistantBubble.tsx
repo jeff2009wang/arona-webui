@@ -2,6 +2,12 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message } from '../../types';
 import type { Components } from 'react-markdown';
+import type { Persona } from '../../types';
+
+const AVATAR: Record<Persona, string> = {
+  arona: '/assets/placeholders/avatar-arona.svg',
+  plana: '/assets/placeholders/avatar-plana.svg',
+};
 
 const mdComponents: Components = {
   p: ({ children }) => <p style={{ margin: '0 0 0.5em', lineHeight: 1.6 }}>{children}</p>,
@@ -41,15 +47,15 @@ const mdComponents: Components = {
   td: ({ children }) => <td style={{ border: '1px solid var(--line)', padding: '5px 9px' }}>{children}</td>,
 };
 
-export function AssistantBubble({ message }: { message: Message }) {
+export function AssistantBubble({ message, persona = 'arona' }: { message: Message; persona?: Persona }) {
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="flex items-end gap-2">
       {/* Avatar */}
       <img
-        src="/assets/placeholders/avatar-arona.svg"
-        alt="Arona"
+        src={AVATAR[persona]}
+        alt={persona === 'arona' ? 'Arona' : 'Plana'}
         width={28}
         height={28}
         style={{ borderRadius: '50%', flexShrink: 0, boxShadow: '0 2px 8px var(--shadow)' }}

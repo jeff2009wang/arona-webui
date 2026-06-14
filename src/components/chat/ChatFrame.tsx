@@ -9,7 +9,7 @@ import { FABDrawer } from './FABDrawer';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useLLM } from '../../hooks/useLLM';
-import type { Message } from '../../types';
+import type { Message, Persona } from '../../types';
 
 const AVATAR: Record<string, string> = {
   arona: '/assets/placeholders/avatar-arona.svg',
@@ -22,9 +22,9 @@ const CHAR_STATUS: Record<string, string> = {
   plana: 'Online · Aria Terminal',
 };
 
-function renderMessage(message: Message) {
+function renderMessage(message: Message, persona: Persona) {
   if (message.role === 'user') return <UserBubble key={message.id} message={message} />;
-  if (message.role === 'assistant') return <AssistantBubble key={message.id} message={message} />;
+  if (message.role === 'assistant') return <AssistantBubble key={message.id} message={message} persona={persona} />;
   if (message.role === 'tool' && message.toolCalls) {
     return (
       <div key={message.id} className="flex flex-col gap-2">
@@ -85,8 +85,8 @@ export function ChatFrame() {
         className="flex-1 overflow-y-auto"
         style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}
       >
-        {session?.messages.map(renderMessage)}
-        {isStreaming && <TypingIndicator />}
+        {session?.messages.map((m) => renderMessage(m, persona))}
+        {isStreaming && <TypingIndicator persona={persona} />}
       </div>
 
       {/* FAB overlay */}

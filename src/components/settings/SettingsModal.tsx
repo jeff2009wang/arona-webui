@@ -108,13 +108,13 @@ export function SettingsModal() {
             )}
             {field('Temperature', 'settings-temperature',
               <input id="settings-temperature" type="number" min="0" max="2" step="0.1" value={temperature}
-                onChange={(e) => updateConfig({ temperature: parseFloat(e.target.value) })}
+                onChange={(e) => { const val = parseFloat(e.target.value); if (!isNaN(val)) updateConfig({ temperature: val }); }}
                 className={inputClass} style={inputStyle} />
             )}
             {field('Max Tokens', 'settings-max-tokens',
               <input id="settings-max-tokens" type="number" min="256" max="128000" step="256" value={maxTokens}
                 aria-label="Max tokens"
-                onChange={(e) => updateConfig({ maxTokens: parseInt(e.target.value, 10) })}
+                onChange={(e) => { const val = parseInt(e.target.value, 10); if (!isNaN(val)) updateConfig({ maxTokens: val }); }}
                 className={inputClass} style={inputStyle} />
             )}
           </div>
