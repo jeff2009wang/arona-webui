@@ -13,13 +13,14 @@ const FALLBACK_BG: Record<Persona, string> = {
 };
 
 function buildOverlay(persona: Persona, opacity: number): string {
+  const o = Math.max(0, Math.min(1, opacity));
   if (persona === 'arona') {
-    const a1 = (0.72 * opacity).toFixed(2);
-    const a2 = (0.86 * opacity).toFixed(2);
+    const a1 = (0.72 * o).toFixed(2);
+    const a2 = (0.86 * o).toFixed(2);
     return `linear-gradient(rgba(235,250,255,${a1}),rgba(235,250,255,${a2}))`;
   }
-  const a1 = (0.70 * opacity).toFixed(2);
-  const a2 = (0.88 * opacity).toFixed(2);
+  const a1 = (0.70 * o).toFixed(2);
+  const a2 = (0.88 * o).toFixed(2);
   return `linear-gradient(rgba(8,14,28,${a1}),rgba(8,14,28,${a2}))`;
 }
 
@@ -44,11 +45,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [persona]);
 
   useEffect(() => {
+    let cancelled = false;
     if (!enableCgBackground) {
       setHasCgBg(false);
       return;
     }
-    probeImage(BG_PATHS[persona]).then(setHasCgBg);
+    probeImage(BG_PATHS[persona]).then((ok) => {
+      if (!cancelled) setHasCgBg(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [persona, enableCgBackground]);
 
   const bgStyle = hasCgBg
