@@ -1,0 +1,15 @@
+<!-- Self-drawn original artwork, CC0 license -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <linearGradient id="ag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b8ecff"/>
+      <stop offset="100%" stop-color="#1FA8FF"/>
+    </linearGradient>
+  </defs>
+  <circle cx="24" cy="24" r="24" fill="url(#ag)"/>
+  <!-- stylized graduation cap silhouette -->
+  <rect x="12" y="22" width="24" height="3" rx="1.5" fill="white" opacity="0.9"/>
+  <polygon points="24,13 36,20 24,24 12,20" fill="white" opacity="0.85"/>
+  <line x1="35" y1="20" x2="35" y2="27" stroke="white" stroke-width="1.5" opacity="0.8"/>
+  <circle cx="35" cy="28" r="2" fill="white" opacity="0.8"/>
+</svg>
