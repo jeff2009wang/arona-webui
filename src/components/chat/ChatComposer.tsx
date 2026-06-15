@@ -1,20 +1,32 @@
-import { useState, useRef } from 'react';
-import { Send } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Send, ImagePlus, X } from 'lucide-react';
 
 interface ChatComposerProps {
-  onSend: (value: string) => void;
+  onSend: (text: string, images: string[]) => void;
   disabled?: boolean;
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
   const [value, setValue] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
     const trimmed = value.trim();
-    if (!trimmed || disabled) return;
-    onSend(trimmed);
+    if ((!trimmed && images.length === 0) || disabled) return;
+    onSend(trimmed, images);
     setValue('');
+    setImages([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
@@ -31,28 +43,121 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
     target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
   };
 
+  const handleFiles = useCallback(async (files: FileList | null) => {
+    if (!files) return;
+    const results = await Promise.all(Array.from(files).map(fileToBase64));
+    setImages((prev) => [...prev, ...results]);
+  }, []);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const imageFiles = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length > 0) {
+      const dt = new DataTransfer();
+      imageFiles.forEach((f) => dt.items.add(f));
+      handleFiles(dt.files);
+    }
+  }, [handleFiles]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    handleFiles(e.dataTransfer.files);
+  }, [handleFiles]);
+
   return (
-    <div className="flex items-end gap-2 p-3 border-t border-[var(--border)] bg-[var(--bg-card)]">
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onInput={handleInput}
-        placeholder="输入消息..."
-        rows={1}
-        disabled={disabled}
-        aria-label="Message input"
-        className="flex-1 min-h-[40px] max-h-[120px] px-4 py-3 rounded-2xl border border-[var(--border)] bg-[var(--tool-bg)] text-[var(--text-main)] text-xs outline-none resize-none focus:border-[var(--primary)] focus:shadow-[0_0_0_3px_var(--hud)] transition-all disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
-      />
-      <button
-        onClick={handleSubmit}
-        disabled={disabled || !value.trim()}
-        aria-label="Send message"
-        className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--bubble-user-start)] to-[var(--bubble-user-end)] text-white grid place-items-center shadow-soft-strong disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity shrink-0 focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
-      >
-        <Send size={14} />
-      </button>
+    <div
+      style={{ borderTop: '1px solid var(--line-soft)', background: 'var(--card-header)', backdropFilter: 'blur(8px)', flexShrink: 0 }}
+      onDrop={handleDrop}
+      onDragOver={(e) => e.preventDefault()}
+    >
+      {/* Image preview strip */}
+      {images.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, padding: '8px 12px 0', overflowX: 'auto' }}>
+          {images.map((src, i) => (
+            <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
+              <img
+                src={src}
+                alt={`Preview ${i + 1}`}
+                style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 10, border: '1.5px solid var(--line)' }}
+              />
+              <button
+                onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
+                aria-label={`Remove image ${i + 1}`}
+                style={{
+                  position: 'absolute', top: -4, right: -4,
+                  width: 16, height: 16, borderRadius: '50%',
+                  background: '#f87171', border: 'none',
+                  display: 'grid', placeItems: 'center',
+                  cursor: 'pointer', color: 'white',
+                }}
+              >
+                <X size={9} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input row */}
+      <div className="flex items-end gap-2 p-3">
+        {/* Attach image button */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Attach image"
+          disabled={disabled}
+          className="shrink-0 w-9 h-9 rounded-xl grid place-items-center transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+          style={{
+            background: 'var(--tool-bg)',
+            border: '1px solid var(--line)',
+            color: 'var(--text-sub)',
+          }}
+        >
+          <ImagePlus size={14} />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+
+        {/* Text input */}
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onInput={handleInput}
+          onPaste={handlePaste}
+          placeholder="发送消息给 Arona..."
+          rows={1}
+          disabled={disabled}
+          aria-label="Message input"
+          className="flex-1 min-h-[40px] max-h-[120px] px-4 py-3 rounded-2xl text-xs outline-none resize-none transition-all disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+          style={{
+            background: 'rgba(255,255,255,0.65)',
+            border: '1.5px solid var(--line)',
+            color: 'var(--text-main)',
+          }}
+        />
+
+        {/* Send button */}
+        <button
+          onClick={handleSubmit}
+          disabled={disabled || (!value.trim() && images.length === 0)}
+          aria-label="Send message"
+          className="shrink-0 w-10 h-10 rounded-full grid place-items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+          style={{
+            background: 'linear-gradient(135deg, var(--primary-light), var(--primary))',
+            boxShadow: '0 4px 14px var(--shadow)',
+            border: 'none',
+            color: 'white',
+          }}
+        >
+          <Send size={14} />
+        </button>
+      </div>
     </div>
   );
 }

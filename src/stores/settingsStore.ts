@@ -14,8 +14,12 @@ const defaultSettings: Settings = {
   apiKey: '',
   model: 'gpt-4o-mini',
   temperature: 0.7,
+  maxTokens: 2048,
   systemPrompt: '你是一个 helpful 的 AI 助手。',
   persona: 'arona',
+  enableCgBackground: true,
+  backgroundOpacity: 0.75,
+  backgroundBlur: 0,
 };
 
 export const useSettingsStore = create<SettingsState>()(

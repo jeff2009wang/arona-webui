@@ -1,25 +1,38 @@
-export function TypingIndicator() {
+import type { Persona } from '../../types';
+
+const AVATAR: Record<Persona, string> = {
+  arona: '/assets/placeholders/avatar-arona.svg',
+  plana: '/assets/placeholders/avatar-plana.svg',
+};
+
+export function TypingIndicator({ persona = 'arona' }: { persona?: Persona }) {
   return (
     <div className="flex items-end gap-2">
-      <div className="w-7 h-7 rounded-[10px] bg-[var(--tool-bg)] border border-[var(--border)] grid place-items-center text-xs shrink-0">
-        🎓
-      </div>
-      <div className="flex items-center gap-1 px-4 py-3 rounded-[18px] rounded-tl-[5px] bg-[var(--bubble-assistant)] border border-[var(--border)] shadow-soft">
-        <span
-          data-testid="typing-dot"
-          className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] motion-safe:animate-bounce"
-          style={{ animationDelay: '0ms' }}
-        />
-        <span
-          data-testid="typing-dot"
-          className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] motion-safe:animate-bounce"
-          style={{ animationDelay: '200ms' }}
-        />
-        <span
-          data-testid="typing-dot"
-          className="w-[5px] h-[5px] rounded-full bg-[var(--primary)] motion-safe:animate-bounce"
-          style={{ animationDelay: '400ms' }}
-        />
+      <img
+        src={AVATAR[persona]}
+        alt={persona === 'arona' ? 'Arona' : 'Plana'}
+        width={28}
+        height={28}
+        style={{ borderRadius: '50%', flexShrink: 0 }}
+      />
+      <div
+        className="flex items-center gap-1 px-4 py-3"
+        style={{
+          borderRadius: 18,
+          borderBottomLeftRadius: 4,
+          background: 'var(--bubble-ai)',
+          border: '1px solid var(--line-soft)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        {[0, 200, 400].map((delay) => (
+          <span
+            key={delay}
+            data-testid="typing-dot"
+            className="w-[5px] h-[5px] rounded-full motion-safe:animate-bounce"
+            style={{ background: 'var(--primary)', animationDelay: `${delay}ms` }}
+          />
+        ))}
       </div>
     </div>
   );

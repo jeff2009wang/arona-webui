@@ -31,12 +31,22 @@ export async function streamChatCompletion({
     body: JSON.stringify({
       model: settings.model,
       temperature: settings.temperature,
+      max_tokens: settings.maxTokens,
       stream: true,
       messages: [
         { role: 'system', content: settings.systemPrompt },
         ...messages.map((m) => ({
           role: m.role,
-          content: m.content,
+          content:
+            m.images?.length
+              ? [
+                  { type: 'text', text: m.content },
+                  ...m.images.map((url) => ({
+                    type: 'image_url',
+                    image_url: { url, detail: 'auto' },
+                  })),
+                ]
+              : m.content,
           tool_calls: m.toolCalls,
         })),
       ],

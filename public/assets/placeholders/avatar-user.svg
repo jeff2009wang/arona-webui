@@ -1,0 +1,7 @@
+<!-- Self-drawn original artwork, CC0 license -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <circle cx="24" cy="24" r="24" fill="rgba(255,255,255,0.6)"/>
+  <!-- person silhouette -->
+  <circle cx="24" cy="18" r="7" fill="rgba(90,122,138,0.6)"/>
+  <path d="M8,42 Q8,30 24,30 Q40,30 40,42Z" fill="rgba(90,122,138,0.5)"/>
+</svg>

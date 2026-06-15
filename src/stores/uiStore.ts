@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type MobileTab = 'chat' | 'history' | 'tools' | 'settings';
+type MobileTab = 'chat' | 'history' | 'settings';
 
 export interface UIState {
   isHistoryOpen: boolean;

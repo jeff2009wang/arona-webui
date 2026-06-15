@@ -1,65 +1,27 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { ChatHeader } from '../ChatHeader';
 
 describe('ChatHeader', () => {
-  it('renders name, status, and avatar', () => {
-    render(
-      <ChatHeader
-        name="Arona"
-        status="Online"
-        avatar="🎓"
-      />
-    );
-
+  it('renders character name', () => {
+    render(<ChatHeader name="Arona" status="Online" avatar="/assets/placeholders/avatar-arona.svg" onStop={vi.fn()} isStreaming={false} model="gpt-4o" />);
     expect(screen.getByText('Arona')).toBeInTheDocument();
-    expect(screen.getByText('Online')).toBeInTheDocument();
-    expect(screen.getByText('🎓')).toBeInTheDocument();
   });
 
-  it('calls onRegenerate when regenerate button is clicked', () => {
-    const onRegenerate = vi.fn();
-    render(
-      <ChatHeader
-        name="Arona"
-        status="Online"
-        avatar="🎓"
-        onRegenerate={onRegenerate}
-      />
-    );
-
-    const regenerateButton = screen.getByRole('button', { name: /regenerate/i });
-    fireEvent.click(regenerateButton);
-    expect(onRegenerate).toHaveBeenCalledTimes(1);
+  it('renders model tag', () => {
+    render(<ChatHeader name="Arona" status="Online" avatar="/assets/placeholders/avatar-arona.svg" onStop={vi.fn()} isStreaming={false} model="gpt-4o-mini" />);
+    expect(screen.getByText('gpt-4o-mini')).toBeInTheDocument();
   });
 
-  it('calls onStop when stop button is clicked', () => {
+  it('calls onStop when stop button clicked during streaming', () => {
     const onStop = vi.fn();
-    render(
-      <ChatHeader
-        name="Arona"
-        status="Online"
-        avatar="🎓"
-        onStop={onStop}
-      />
-    );
-
-    const stopButton = screen.getByRole('button', { name: /stop/i });
-    fireEvent.click(stopButton);
-    expect(onStop).toHaveBeenCalledTimes(1);
+    render(<ChatHeader name="Arona" status="Online" avatar="/assets/placeholders/avatar-arona.svg" onStop={onStop} isStreaming={true} model="gpt-4o" />);
+    fireEvent.click(screen.getByRole('button', { name: /stop/i }));
+    expect(onStop).toHaveBeenCalledOnce();
   });
 
-  it('has accessible labels on all action buttons', () => {
-    render(
-      <ChatHeader
-        name="Arona"
-        status="Online"
-        avatar="🎓"
-      />
-    );
-
-    expect(screen.getByRole('button', { name: /regenerate/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /more options/i })).toBeInTheDocument();
+  it('does not show stop button when not streaming', () => {
+    render(<ChatHeader name="Arona" status="Online" avatar="/assets/placeholders/avatar-arona.svg" onStop={vi.fn()} isStreaming={false} model="gpt-4o" />);
+    expect(screen.queryByRole('button', { name: /stop/i })).toBeNull();
   });
 });

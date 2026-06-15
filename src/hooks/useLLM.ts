@@ -12,8 +12,12 @@ export function useLLM() {
       apiKey: state.apiKey,
       model: state.model,
       temperature: state.temperature,
+      maxTokens: state.maxTokens,
       systemPrompt: state.systemPrompt,
       persona: state.persona,
+      enableCgBackground: state.enableCgBackground,
+      backgroundOpacity: state.backgroundOpacity,
+      backgroundBlur: state.backgroundBlur,
     }))
   );
   const addMessage = useSessionStore((s) => s.addMessage);
@@ -22,7 +26,7 @@ export function useLLM() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
-    async (sessionId: string, content: string) => {
+    async (sessionId: string, content: string, images?: string[]) => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -31,6 +35,7 @@ export function useLLM() {
         id: crypto.randomUUID(),
         role: 'user',
         content,
+        images: images?.length ? images : undefined,
         createdAt: Date.now(),
       };
 
@@ -66,7 +71,7 @@ export function useLLM() {
         });
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
-          // User stopped generation - keep current content
+          // User stopped — keep current content
         } else {
           updateMessage(sessionId, assistantMessage.id, {
             content: error instanceof LLMError ? error.message : 'Unknown error',

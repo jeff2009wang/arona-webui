@@ -19,8 +19,12 @@ describe('streamChatCompletion', () => {
     apiKey: 'key',
     model: 'gpt-4',
     temperature: 0.7,
+    maxTokens: 2048,
     systemPrompt: '',
     persona: 'arona' as const,
+    enableCgBackground: true,
+    backgroundOpacity: 0.75,
+    backgroundBlur: 0,
   };
 
   it('streams chunks', async () => {
