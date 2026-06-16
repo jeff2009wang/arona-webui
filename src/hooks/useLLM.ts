@@ -49,6 +49,7 @@ export function useLLM() {
     >
   >({});
   const toolMessageIdRef = useRef<string | null>(null);
+  const contentFlushRafRef = useRef<number | null>(null);
 
   const buildToolCalls = (): ToolCall[] => {
     return Object.values(streamingToolsRef.current).map((tc) => {
@@ -103,6 +104,36 @@ export function useLLM() {
 
       const contentRef = { current: '' };
       const reasoningRef = { current: '' };
+      const pendingContentRef = { current: '' };
+      const pendingReasoningRef = { current: '' };
+
+      const flushContentUpdate = () => {
+        if (contentFlushRafRef.current) {
+          cancelAnimationFrame(contentFlushRafRef.current);
+          contentFlushRafRef.current = null;
+        }
+        const updates: Partial<Message> = {};
+        if (contentRef.current !== pendingContentRef.current) {
+          updates.content = contentRef.current;
+          pendingContentRef.current = contentRef.current;
+        }
+        if (reasoningRef.current !== pendingReasoningRef.current) {
+          updates.reasoning = reasoningRef.current;
+          pendingReasoningRef.current = reasoningRef.current;
+        }
+        if (Object.keys(updates).length > 0) {
+          updateMessage(assistantMessage.id, updates);
+        }
+      };
+
+      const scheduleContentFlush = () => {
+        if (contentFlushRafRef.current) return;
+        contentFlushRafRef.current = requestAnimationFrame(() => {
+          contentFlushRafRef.current = null;
+          flushContentUpdate();
+        });
+      };
+
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
@@ -143,9 +174,7 @@ export function useLLM() {
             sessionId: session.id,
             onChunk: (chunk) => {
               contentRef.current += chunk;
-              updateMessage(assistantMessage.id, {
-                content: contentRef.current,
-              });
+              scheduleContentFlush();
             },
             onReasoningChunk: (chunk) => {
               const normalizedChunk = chunk.trim();
@@ -155,9 +184,7 @@ export function useLLM() {
                 !normalizedContent.startsWith(normalizedChunk)
               ) {
                 reasoningRef.current = chunk;
-                updateMessage(assistantMessage.id, {
-                  reasoning: reasoningRef.current,
-                });
+                scheduleContentFlush();
               }
             },
             onToolCall: (toolCall) => {
@@ -182,15 +209,11 @@ export function useLLM() {
             messages: streamMessages,
             onChunk: (chunk) => {
               contentRef.current += chunk;
-              updateMessage(assistantMessage.id, {
-                content: contentRef.current,
-              });
+              scheduleContentFlush();
             },
             onReasoningChunk: (chunk) => {
               reasoningRef.current += chunk;
-              updateMessage(assistantMessage.id, {
-                reasoning: reasoningRef.current,
-              });
+              scheduleContentFlush();
             },
             onToolCall: (delta) => {
               const existing = streamingToolsRef.current[delta.id];
@@ -218,12 +241,19 @@ export function useLLM() {
           streamErrored = true;
           const message = extractErrorMessage(error);
           console.error('[useLLM] stream error:', error);
+          if (contentFlushRafRef.current) {
+            cancelAnimationFrame(contentFlushRafRef.current);
+            contentFlushRafRef.current = null;
+          }
+          contentRef.current = message;
+          pendingContentRef.current = message;
           updateMessage(assistantMessage.id, {
             content: message,
             status: 'error',
           });
         }
       } finally {
+        flushContentUpdate();
         if (toolMessageIdRef.current) {
           const finalStatus: ToolCall['status'] = streamErrored ? 'error' : 'success';
           for (const tc of Object.values(streamingToolsRef.current)) {

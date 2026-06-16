@@ -32,6 +32,10 @@ vi.mock('../ThinkingBubble', () => ({
 }));
 vi.mock('../TypingIndicator', () => ({ TypingIndicator: () => <div data-testid="typing-indicator">typing</div> }));
 
+vi.mock('../ToolActivityGroup', () => ({
+  ToolActivityGroup: () => <div data-testid="tool-activity-group">tools</div>,
+}));
+
 const baseAssistant = { id: 'm2', role: 'assistant' as const, content: '', createdAt: Date.now() };
 const mockSession: Session = {
   id: 's1',
@@ -111,5 +115,37 @@ describe('ChatFrame thinking state', () => {
     expect(screen.getByTestId(`message-${baseAssistant.id}`)).toHaveTextContent('assistant:hello');
     expect(screen.queryByTestId('thinking-bubble')).toBeNull();
     expect(screen.queryByTestId('typing-indicator')).toBeNull();
+  });
+
+  it('keeps thinking bubble above tool calls while assistant is empty and streaming', () => {
+    const sessionWithTool: Session = {
+      ...mockSession,
+      messages: [
+        mockSession.messages[0],
+        baseAssistant,
+        {
+          id: 'm3',
+          role: 'tool' as const,
+          content: '',
+          createdAt: Date.now(),
+          toolCalls: [
+            {
+              id: 'tc1',
+              name: 'web_search',
+              arguments: { query: 'test' },
+              status: 'running' as const,
+              startedAt: Date.now(),
+            },
+          ],
+        },
+      ],
+    };
+    vi.mocked(useSessionStore).mockImplementation((selector: (state: SessionState) => unknown) =>
+      selector({ ...mockSessionStoreStreaming, currentSession: sessionWithTool } as SessionState)
+    );
+    render(<ChatFrame />);
+    expect(screen.getByTestId('thinking-bubble')).toBeInTheDocument();
+    expect(screen.getByTestId('tool-activity-group')).toBeInTheDocument();
+    expect(screen.queryByTestId(`message-${baseAssistant.id}`)).toBeNull();
   });
 });

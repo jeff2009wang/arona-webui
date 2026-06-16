@@ -94,12 +94,6 @@ export function ChatFrame() {
     return -1;
   }, [session]);
 
-  const lastMessage = session?.messages.at(-1);
-  const isLastMessageEmptyAssistant =
-    isStreaming &&
-    lastMessage?.role === 'assistant' &&
-    (lastMessage?.content ?? '').trim().length === 0;
-
   const renderGroups = useMemo(() => {
     if (!session) return [] as Array<
       | { type: 'message'; message: Message }
@@ -177,8 +171,11 @@ export function ChatFrame() {
 
           const m = group.message;
           const idx = session!.messages.indexOf(m);
-          const isLast = idx === session!.messages.length - 1;
-          if (isLast && isLastMessageEmptyAssistant) {
+          const isEmptyStreamingAssistant =
+            isStreaming &&
+            m.role === 'assistant' &&
+            m.content.trim().length === 0;
+          if (isEmptyStreamingAssistant) {
             return (
               <ThinkingBubble
                 key="thinking"
