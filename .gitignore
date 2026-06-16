@@ -20,10 +20,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# User-supplied local CG backgrounds (not committed — self-provide)
+# User-supplied local assets (not committed — self-provide)
 public/assets/local/backgrounds/arona-light.png
 public/assets/local/backgrounds/arona-light.jpg
 public/assets/local/backgrounds/arona-light.webp
 public/assets/local/backgrounds/plana-dark.png
 public/assets/local/backgrounds/plana-dark.jpg
 public/assets/local/backgrounds/plana-dark.webp
+public/assets/characters/
+
+# Large local reference archives (not committed)
+碧蓝档案/
+碧蓝档案.zip
