@@ -1,4 +1,4 @@
-import type { Message, Settings, MessageNode, TextNode, ReasoningNode } from '../types';
+import type { Message, Settings, MessageNode, TextNode, ReasoningNode, ToolCallNode } from '../types';
 
 export interface LLMOptions {
   settings: Settings;
@@ -15,6 +15,15 @@ export class LLMError extends Error {
     super(message);
     this.name = 'LLMError';
   }
+}
+
+function nodesToApiString(nodes: MessageNode[]): string {
+  let out = '';
+  for (const n of nodes) {
+    if (n.type === 'text') out += n.content;
+    else if (n.type === 'reasoning') out += n.content;
+  }
+  return out;
 }
 
 export async function streamChatCompletion({
@@ -44,14 +53,14 @@ export async function streamChatCompletion({
           content:
             m.images?.length
               ? [
-                  { type: 'text', text: Array.isArray(m.content) ? m.content.filter(n => n.type === 'text').map(n => (n as TextNode).content).join('') : m.content },
+                  { type: 'text', text: Array.isArray(m.content) ? nodesToApiString(m.content) : m.content },
                   ...m.images.map((url) => ({
                     type: 'image_url',
                     image_url: { url, detail: 'auto' },
                   })),
                 ]
               : Array.isArray(m.content)
-                ? m.content.filter(n => n.type === 'text').map(n => (n as TextNode).content).join('')
+                ? nodesToApiString(m.content)
                 : m.content,
         })),
       ],
@@ -69,6 +78,7 @@ export async function streamChatCompletion({
 
   const decoder = new TextDecoder();
   let buffer = '';
+  const partialToolCalls = new Map<number, { id: string; name: string; args: string; startedAt: number }>();
 
   try {
     while (true) {
@@ -80,13 +90,13 @@ export async function streamChatCompletion({
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        processSSELine(line, onChunk, onReasoningChunk, onToolCall, onNodeUpdate);
+        processSSELine(line, onChunk, onReasoningChunk, onToolCall, onNodeUpdate, partialToolCalls);
       }
     }
 
     buffer += decoder.decode();
     if (buffer.trim()) {
-      processSSELine(buffer, onChunk, onReasoningChunk, onToolCall, onNodeUpdate);
+      processSSELine(buffer, onChunk, onReasoningChunk, onToolCall, onNodeUpdate, partialToolCalls);
     }
   } finally {
     reader.releaseLock();
@@ -98,7 +108,8 @@ function processSSELine(
   onChunk?: (chunk: string) => void,
   onReasoningChunk?: (chunk: string) => void,
   onToolCall?: (toolCall: { id: string; name: string; arguments: string }) => void,
-  onNodeUpdate?: (node: MessageNode) => void
+  onNodeUpdate?: (node: MessageNode) => void,
+  partialToolCalls?: Map<number, { id: string; name: string; args: string; startedAt: number }>
 ) {
   const trimmed = line.trim();
   if (!trimmed || !trimmed.startsWith('data:')) return;
@@ -121,14 +132,49 @@ function processSSELine(
       onReasoningChunk?.(delta.reasoning);
       onNodeUpdate?.({ type: 'reasoning', content: delta.reasoning } as ReasoningNode);
     }
-    if (delta?.tool_calls && onToolCall) {
+    if (delta?.tool_calls) {
       for (const tc of delta.tool_calls) {
-        const id = tc.id ?? 'unknown';
-        const name = tc.function?.name ?? '';
-        const args = tc.function?.arguments ?? '';
-        if (name || args) {
-          onToolCall({ id, name, arguments: args });
+        const index = tc.index ?? 0;
+        const id = tc.id ?? partialToolCalls?.get(index)?.id ?? 'unknown';
+        const name = tc.function?.name ?? partialToolCalls?.get(index)?.name ?? '';
+        const argsDelta = tc.function?.arguments ?? '';
+
+        let existing = partialToolCalls?.get(index);
+        if (!existing) {
+          existing = { id, name, args: '', startedAt: Date.now() };
+          partialToolCalls?.set(index, existing);
         }
+        if (argsDelta) {
+          existing.args += argsDelta;
+        }
+        if (tc.function?.name) {
+          existing.name = tc.function.name;
+        }
+        if (tc.id) {
+          existing.id = tc.id;
+        }
+
+        if (name || argsDelta) {
+          onToolCall?.({ id: existing.id, name: existing.name, arguments: existing.args });
+        }
+
+        let parsedArgs: Record<string, unknown> = {};
+        try {
+          if (existing.args.trim()) {
+            parsedArgs = JSON.parse(existing.args);
+          }
+        } catch {
+          // Partial JSON: send empty object so useLLM keeps previous parsed args
+        }
+
+        onNodeUpdate?.({
+          type: 'tool_call',
+          id: existing.id,
+          name: existing.name,
+          arguments: parsedArgs,
+          status: 'running',
+          startedAt: existing.startedAt,
+        } as ToolCallNode);
       }
     }
   } catch {

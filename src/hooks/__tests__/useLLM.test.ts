@@ -286,4 +286,37 @@ describe('useLLM', () => {
       expect(reasoningNode).toBeUndefined();
     });
   });
+
+  it('streams OpenAI tool calls as nodes into the assistant message', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: {
+        getReader: () =>
+          createMockReader([
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"tc_1","function":{"name":"get_weather","arguments":""}}]}}]}\n\n',
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"loc\\":\\"NYC\\"}"}}]}}]}\n\n',
+            'data: [DONE]\n\n',
+          ]),
+      },
+    });
+
+    const { result } = renderHook(() => useLLM());
+
+    await act(async () => {
+      await result.current.sendMessage('hi');
+    });
+
+    await waitFor(() => {
+      const session = useSessionStore.getState().currentSession;
+      expect(session?.messages[1].role).toBe('assistant');
+      const nodes = session?.messages[1].content as import('../../types').MessageNode[];
+      expect(nodes).toBeDefined();
+      const toolNode = nodes.find((n) => n.type === 'tool_call') as import('../../types').ToolCallNode | undefined;
+      expect(toolNode).toBeDefined();
+      expect(toolNode?.name).toBe('get_weather');
+      expect(toolNode?.status).toBe('running');
+      expect(toolNode?.arguments).toEqual({ loc: 'NYC' });
+    });
+  });
 });

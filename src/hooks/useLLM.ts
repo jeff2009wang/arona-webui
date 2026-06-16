@@ -149,7 +149,7 @@ export function useLLM() {
         const currentMessages = useSessionStore.getState().currentSession?.messages ?? [];
         const streamMessages = currentMessages.filter(
           (m) =>
-            (m.role === 'user' || m.role === 'assistant' || m.role === 'tool') &&
+            (m.role === 'user' || m.role === 'assistant') &&
             m.status !== 'error' &&
             (m.role !== 'assistant' || (Array.isArray(m.content) ? m.content.length > 0 : m.content.trim() !== ''))
         );

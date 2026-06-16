@@ -115,6 +115,64 @@ describe('streamChatCompletion', () => {
     ).rejects.toThrow(LLMError);
   });
 
+  it('streams tool calls as nodes via onNodeUpdate', async () => {
+    const nodes: import('../../types').MessageNode[] = [];
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: {
+        getReader: () =>
+          createMockReader([
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"tc1","function":{"name":"search","arguments":""}}]}}]}\n\n',
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"q\\":\\"test\\"}"}}]}}]}\n\n',
+            'data: [DONE]\n\n',
+          ]),
+      },
+    });
+
+    await streamChatCompletion({
+      settings: baseSettings,
+      messages: [],
+      onChunk: () => {},
+      onNodeUpdate: (n) => nodes.push(n),
+    });
+
+    const toolNodes = nodes.filter((n) => n.type === 'tool_call') as import('../../types').ToolCallNode[];
+    expect(toolNodes.length).toBeGreaterThanOrEqual(1);
+    expect(toolNodes[toolNodes.length - 1].name).toBe('search');
+    expect(toolNodes[toolNodes.length - 1].arguments).toEqual({ q: 'test' });
+    expect(toolNodes[toolNodes.length - 1].status).toBe('running');
+  });
+
+  it('converts assistant node arrays to string for API, including reasoning', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: { getReader: () => createMockReader(['data: [DONE]\n\n']) },
+    });
+    global.fetch = fetchSpy;
+
+    await streamChatCompletion({
+      settings: baseSettings,
+      messages: [
+        {
+          id: '1',
+          role: 'assistant',
+          content: [
+            { type: 'text', content: 'Hello ' },
+            { type: 'reasoning', content: 'thinking...' },
+            { type: 'text', content: 'world' },
+          ],
+          createdAt: Date.now(),
+        },
+      ],
+      onChunk: () => {},
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+    expect(body.messages[1].content).toBe('Hello thinking...world');
+  });
+
   it('passes abort signal to fetch', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
