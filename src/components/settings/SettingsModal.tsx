@@ -1,5 +1,5 @@
 import { X, Eye, EyeOff } from 'lucide-react';
-import { useRef, useEffect, useState, forwardRef } from 'react';
+import { useEffect, useState, forwardRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -321,7 +321,7 @@ export function SettingsModal() {
     <ConfirmDialog
       isOpen={confirmResetOpen}
       title="Reset to Defaults?"
-      message="This will restore all settings to their default values. Your chat sessions will remain intact."
+      message="This will restore all settings to their default values. Your current chat will remain intact."
       confirmText="Reset"
       cancelText="Cancel"
       variant="danger"
@@ -331,7 +331,7 @@ export function SettingsModal() {
     <ConfirmDialog
       isOpen={confirmClearOpen}
       title="Clear All Local Data?"
-      message="This will permanently delete all sessions and settings. This action cannot be undone."
+      message="This will permanently delete all settings and clear the current chat. This action cannot be undone."
       confirmText="Clear"
       cancelText="Cancel"
       variant="danger"

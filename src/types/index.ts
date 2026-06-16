@@ -14,6 +14,7 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
+  reasoning?: string; // streaming reasoning / thinking content
   createdAt: number;
   toolCalls?: ToolCall[];
   status?: 'sending' | 'sent' | 'error';
@@ -23,10 +24,13 @@ export interface Message {
 export interface Session {
   id: string;
   title: string;
+  summary: string;
   messages: Message[];
   createdAt: number;
   updatedAt: number;
   systemPrompt?: string;
+  titleGenerated: boolean;
+  summaryGenerated: boolean;
 }
 
 export interface Settings {
@@ -40,4 +44,8 @@ export interface Settings {
   enableCgBackground: boolean;
   backgroundOpacity: number; // 0–1, scales theme overlay alpha
   backgroundBlur: number;    // px, applied to background layer only
+  streamEnabled?: boolean;
+  localBackgroundPath?: string;
+  localAvatarPath?: string;
+  autoSummarize?: boolean;
 }

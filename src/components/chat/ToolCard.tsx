@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { ToolCall } from '../../types';
 
 const STATE_CONFIG = {
@@ -30,6 +31,7 @@ export function ToolCard({ toolCall }: ToolCardProps) {
   const [expanded, setExpanded] = useState(false);
   const cfg = STATE_CONFIG[toolCall.status];
   const isRunning = toolCall.status === 'running';
+  const isError = toolCall.status === 'error';
 
   const resultText =
     toolCall.result !== undefined
@@ -38,15 +40,32 @@ export function ToolCard({ toolCall }: ToolCardProps) {
         : JSON.stringify(toolCall.result, null, 2)
       : '';
 
+  const argsText =
+    toolCall.arguments && Object.keys(toolCall.arguments).length > 0
+      ? JSON.stringify(toolCall.arguments, null, 2)
+      : '';
+
+  const resultPreview =
+    typeof toolCall.result === 'string' && toolCall.result
+      ? toolCall.result
+      : '';
+
+  const argsPreview = argsText ? argsText : '';
+
+  const collapsedPreview = resultPreview || argsPreview;
+
+  const hasDetails = Boolean(resultText || argsText);
+
   return (
     <div
-      className="max-w-[78%]"
+      className={`max-w-[78%] ${isError ? 'tool-shake' : ''}`}
       style={{
         background: cfg.bgAlpha,
         border: `1px solid ${cfg.borderAlpha}`,
         borderLeft: `3px solid ${cfg.accentColor}`,
         borderRadius: 16,
         backdropFilter: 'blur(8px)',
+        overflow: 'hidden',
       }}
     >
       {/* Top bar */}
@@ -59,6 +78,7 @@ export function ToolCard({ toolCall }: ToolCardProps) {
             <span
               role="status"
               aria-label="Loading"
+              className="tool-sweep"
               style={{
                 display: 'inline-block', width: 10, height: 10,
                 borderRadius: '50%',
@@ -67,9 +87,18 @@ export function ToolCard({ toolCall }: ToolCardProps) {
                 animation: 'spin 0.7s linear infinite',
               }}
             />
+          ) : toolCall.status === 'success' ? (
+            <motion.span
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              style={{ fontSize: 11, fontWeight: 800, color: cfg.accentColor }}
+            >
+              ✓
+            </motion.span>
           ) : (
             <span style={{ fontSize: 11, fontWeight: 800, color: cfg.accentColor }}>
-              {toolCall.status === 'success' ? '✓' : '✗'}
+              ✗
             </span>
           )}
           <span
@@ -109,48 +138,75 @@ export function ToolCard({ toolCall }: ToolCardProps) {
           {toolCall.name}
         </div>
 
-        {isRunning ? (
-          <div className="mt-1" style={{ fontSize: 10, color: 'var(--text-sub)' }}>
-            正在调用...
-          </div>
-        ) : typeof toolCall.result === 'string' && !expanded ? (
+        {!expanded && collapsedPreview && (
           <div
             className="mt-1"
             style={{
               fontSize: 10,
-              color: toolCall.status === 'error' ? '#dc2626' : '#16a34a',
+              color: isError ? '#dc2626' : isRunning ? 'var(--text-sub)' : '#16a34a',
             }}
           >
-            {resultText.length > 80
-              ? resultText.slice(0, 80) + '…'
-              : resultText}
+            {collapsedPreview.length > 80
+              ? collapsedPreview.slice(0, 80) + '…'
+              : collapsedPreview}
           </div>
-        ) : null}
+        )}
 
         {/* Expanded code block */}
-        {expanded && resultText && (
-          <pre
-            style={{
-              fontFamily: "'SF Mono', 'Menlo', monospace",
-              fontSize: 10, lineHeight: 1.55,
-              background: 'rgba(255,255,255,0.5)',
-              border: '1px solid var(--line-soft)',
-              borderRadius: 10,
-              padding: '8px 10px',
-              overflowX: 'auto',
-              marginTop: 8,
-              color: 'var(--text-sub)',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}
-          >
-            {resultText}
-          </pre>
-        )}
+        <AnimatePresence>
+          {expanded && hasDetails && (
+            <motion.div
+              initial={{ height: 0, opacity: 0, marginTop: 0 }}
+              animate={{ height: 'auto', opacity: 1, marginTop: 8 }}
+              exit={{ height: 0, opacity: 0, marginTop: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              style={{ overflow: 'hidden' }}
+            >
+              {argsText && (
+                <pre
+                  style={{
+                    fontFamily: "'SF Mono', 'Menlo', monospace",
+                    fontSize: 10, lineHeight: 1.55,
+                    background: 'rgba(255,255,255,0.5)',
+                    border: '1px solid var(--line-soft)',
+                    borderRadius: 10,
+                    padding: '8px 10px',
+                    overflowX: 'auto',
+                    color: 'var(--text-sub)',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    margin: '0 0 8px',
+                  }}
+                >
+                  {argsText}
+                </pre>
+              )}
+              {resultText && (
+                <pre
+                  style={{
+                    fontFamily: "'SF Mono', 'Menlo', monospace",
+                    fontSize: 10, lineHeight: 1.55,
+                    background: 'rgba(255,255,255,0.5)',
+                    border: '1px solid var(--line-soft)',
+                    borderRadius: 10,
+                    padding: '8px 10px',
+                    overflowX: 'auto',
+                    color: toolCall.status === 'error' ? '#dc2626' : 'var(--text-sub)',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    margin: 0,
+                  }}
+                >
+                  {resultText}
+                </pre>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Footer toggle */}
-      {!isRunning && resultText && (
+      {hasDetails && (
         <div className="px-3 pb-2">
           <button
             onClick={() => setExpanded((v) => !v)}
@@ -161,11 +217,6 @@ export function ToolCard({ toolCall }: ToolCardProps) {
           </button>
         </div>
       )}
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
-      `}</style>
     </div>
   );
 }

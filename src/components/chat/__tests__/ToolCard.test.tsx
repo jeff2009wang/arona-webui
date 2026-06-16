@@ -31,12 +31,14 @@ describe('ToolCard', () => {
     expect(screen.getByText(/403 Forbidden/i)).toBeInTheDocument();
   });
 
-  it('toggles expanded details on click', () => {
+  it('toggles expanded details on click', async () => {
     render(<ToolCard toolCall={{ ...base, status: 'success', result: { key: 'value' }, finishedAt: Date.now() }} />);
     expect(screen.queryByText(/key/)).toBeNull();
     fireEvent.click(screen.getByText(/展开详情/i));
     expect(screen.getByText(/"key"/)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/收起/i));
+    // Wait for AnimatePresence exit animation to remove from DOM
+    await new Promise((r) => setTimeout(r, 350));
     expect(screen.queryByText(/"key"/)).toBeNull();
   });
 });

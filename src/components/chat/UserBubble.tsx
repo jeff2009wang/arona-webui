@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Message } from '../../types';
+import { MessageActions } from './MessageActions';
 
 export function UserBubble({ message }: { message: Message }) {
   const [preview, setPreview] = useState<string | null>(null);
@@ -7,8 +8,14 @@ export function UserBubble({ message }: { message: Message }) {
   const hasImages = message.images && message.images.length > 0;
 
   return (
-    <div className="flex items-end justify-end gap-2">
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', maxWidth: '68%' }}>
+    <div
+      className="message-row user"
+      style={{ display: 'flex', alignItems: 'flex-end', gap: 10, width: '100%', margin: '18px 0', justifyContent: 'flex-end' }}
+    >
+      <div
+        className="message-stack"
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', maxWidth: 'min(620px, 58%)', position: 'relative' }}
+      >
         {/* Image thumbnails */}
         {hasImages && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -30,26 +37,54 @@ export function UserBubble({ message }: { message: Message }) {
         )}
 
         {/* Text bubble */}
-        {message.content && (
+        {(message.content || !hasImages) && (
           <div
+            className="message-bubble"
             style={{
-              padding: '10px 14px',
-              borderRadius: 18,
-              borderBottomRightRadius: 4,
+              display: 'inline-block',
+              width: 'max-content',
+              maxWidth: '100%',
+              boxSizing: 'border-box',
+              padding: '14px 18px',
+              borderRadius: 22,
+              borderBottomRightRadius: 8,
               background: 'linear-gradient(135deg, var(--bubble-user-from), var(--bubble-user-to))',
               color: 'white',
-              fontSize: 12,
-              lineHeight: 1.6,
               boxShadow: '0 6px 20px var(--shadow)',
             }}
           >
-            {message.content}
+            <div
+              className="message-text"
+              style={{
+                display: 'block',
+                width: 'max-content',
+                maxWidth: '100%',
+                fontSize: 16,
+                lineHeight: 1.6,
+                fontWeight: 500,
+                letterSpacing: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'normal',
+                overflowWrap: 'break-word',
+                lineBreak: 'loose',
+              }}
+            >
+              {message.content}
+            </div>
           </div>
         )}
 
         {/* Timestamp */}
-        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 3 }}>
+        <div
+          className="message-time"
+          style={{ marginTop: 6, fontSize: 12, opacity: 0.55, color: 'var(--text-muted)' }}
+        >
           {time}
+        </div>
+
+        {/* Message actions hover bar */}
+        <div className="message-actions-wrapper">
+          <MessageActions message={message} />
         </div>
       </div>
 

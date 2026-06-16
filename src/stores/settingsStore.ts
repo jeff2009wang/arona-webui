@@ -36,7 +36,6 @@ export const useSettingsStore = create<SettingsState>()(
       resetToDefaults: () => set(defaultSettings),
       clearAllData: () => {
         if (window.confirm('确定要清除所有数据吗？此操作不可撤销。')) {
-          localStorage.removeItem('arona-sessions');
           localStorage.removeItem('arona-settings');
           window.location.reload();
         }

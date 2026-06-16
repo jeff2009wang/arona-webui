@@ -4,6 +4,7 @@ export interface LLMOptions {
   settings: Settings;
   messages: Message[];
   onChunk: (chunk: string) => void;
+  onReasoningChunk?: (chunk: string) => void;
   onToolCall?: (toolCall: { id: string; name: string; arguments: string }) => void;
   signal?: AbortSignal;
 }
@@ -19,6 +20,7 @@ export async function streamChatCompletion({
   settings,
   messages,
   onChunk,
+  onReasoningChunk,
   onToolCall,
   signal,
 }: LLMOptions): Promise<void> {
@@ -47,7 +49,6 @@ export async function streamChatCompletion({
                   })),
                 ]
               : m.content,
-          tool_calls: m.toolCalls,
         })),
       ],
     }),
@@ -75,13 +76,14 @@ export async function streamChatCompletion({
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        processSSELine(line, onChunk, onToolCall);
+        processSSELine(line, onChunk, onReasoningChunk, onToolCall);
       }
     }
 
-    // Process any remaining buffer after stream ends
+    // Flush any bytes the decoder held for an incomplete multi-byte sequence
+    buffer += decoder.decode();
     if (buffer.trim()) {
-      processSSELine(buffer, onChunk, onToolCall);
+      processSSELine(buffer, onChunk, onReasoningChunk, onToolCall);
     }
   } finally {
     reader.releaseLock();
@@ -91,6 +93,7 @@ export async function streamChatCompletion({
 function processSSELine(
   line: string,
   onChunk: (chunk: string) => void,
+  onReasoningChunk?: (chunk: string) => void,
   onToolCall?: (toolCall: { id: string; name: string; arguments: string }) => void
 ) {
   const trimmed = line.trim();
@@ -103,6 +106,12 @@ function processSSELine(
     const parsed = JSON.parse(data);
     const delta = parsed.choices?.[0]?.delta;
     if (delta?.content) onChunk(delta.content);
+    if (delta?.reasoning_content && onReasoningChunk) {
+      onReasoningChunk(delta.reasoning_content);
+    }
+    if (delta?.reasoning && onReasoningChunk) {
+      onReasoningChunk(delta.reasoning);
+    }
     if (delta?.tool_calls && onToolCall) {
       for (const tc of delta.tool_calls) {
         const id = tc.id ?? 'unknown';

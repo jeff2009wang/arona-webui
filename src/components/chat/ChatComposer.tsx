@@ -1,10 +1,16 @@
 import { useState, useRef, useCallback } from 'react';
-import { Send, ImagePlus, X } from 'lucide-react';
+import { Send, ImagePlus, X, Loader2 } from 'lucide-react';
+import type { Persona } from '../../types';
 
 interface ChatComposerProps {
   onSend: (text: string, images: string[]) => void;
   disabled?: boolean;
+  persona?: Persona;
 }
+
+const CHAR_NAME: Record<Persona, string> = { arona: 'Arona', plana: 'Plana' };
+const MAX_IMAGES = 4;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -15,7 +21,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
+export function ChatComposer({ onSend, disabled, persona = 'arona' }: ChatComposerProps) {
   const [value, setValue] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -31,7 +37,8 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Prevent Enter from sending while the user is composing CJK characters via IME.
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSubmit();
     }
@@ -40,14 +47,29 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
   const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
     const target = e.currentTarget;
     target.style.height = 'auto';
-    target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+    target.style.height = `${Math.min(target.scrollHeight, 200)}px`;
   };
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files) return;
-    const results = await Promise.all(Array.from(files).map(fileToBase64));
-    setImages((prev) => [...prev, ...results]);
-  }, []);
+    const imageFiles = Array.from(files).filter((file) => {
+      if (!file.type.startsWith('image/')) return false;
+      if (file.size > MAX_FILE_SIZE) {
+        console.warn(`Image ${file.name} exceeds 5MB limit`);
+        return false;
+      }
+      return true;
+    });
+    const remainingSlots = Math.max(0, MAX_IMAGES - images.length);
+    const toAdd = imageFiles.slice(0, remainingSlots);
+    if (toAdd.length === 0) return;
+    try {
+      const results = await Promise.all(toAdd.map(fileToBase64));
+      setImages((prev) => [...prev, ...results]);
+    } catch (e) {
+      console.warn('Failed to read image:', e);
+    }
+  }, [images.length]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const imageFiles = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
@@ -62,6 +84,8 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
     e.preventDefault();
     handleFiles(e.dataTransfer.files);
   }, [handleFiles]);
+
+  const placeholder = `发送消息给 ${CHAR_NAME[persona]}...`;
 
   return (
     <div
@@ -103,8 +127,8 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
         <button
           onClick={() => fileInputRef.current?.click()}
           aria-label="Attach image"
-          disabled={disabled}
-          className="shrink-0 w-9 h-9 rounded-xl grid place-items-center transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+          disabled={disabled || images.length >= MAX_IMAGES}
+          className="composer-btn attach shrink-0 w-9 h-9 rounded-xl grid place-items-center transition-all focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
           style={{
             background: 'var(--tool-bg)',
             border: '1px solid var(--line)',
@@ -119,7 +143,7 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
           accept="image/*"
           multiple
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => { handleFiles(e.target.files); if (fileInputRef.current) fileInputRef.current.value = ''; }}
         />
 
         {/* Text input */}
@@ -130,11 +154,11 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
           onKeyDown={handleKeyDown}
           onInput={handleInput}
           onPaste={handlePaste}
-          placeholder="发送消息给 Arona..."
+          placeholder={placeholder}
           rows={1}
           disabled={disabled}
           aria-label="Message input"
-          className="flex-1 min-h-[40px] max-h-[120px] px-4 py-3 rounded-2xl text-xs outline-none resize-none transition-all disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+          className="flex-1 min-h-[40px] max-h-[200px] px-4 py-3 rounded-2xl text-xs outline-none resize-none transition-all disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
           style={{
             background: 'rgba(255,255,255,0.65)',
             border: '1.5px solid var(--line)',
@@ -147,7 +171,7 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
           onClick={handleSubmit}
           disabled={disabled || (!value.trim() && images.length === 0)}
           aria-label="Send message"
-          className="shrink-0 w-10 h-10 rounded-full grid place-items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+          className="composer-btn send shrink-0 w-10 h-10 rounded-full grid place-items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
           style={{
             background: 'linear-gradient(135deg, var(--primary-light), var(--primary))',
             boxShadow: '0 4px 14px var(--shadow)',
@@ -155,7 +179,7 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
             color: 'white',
           }}
         >
-          <Send size={14} />
+          {disabled ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
         </button>
       </div>
     </div>
