@@ -1,14 +1,8 @@
 import { type ReactNode } from 'react';
 
-export function DesktopLayout({
-  history,
-  chat,
-}: {
-  history: ReactNode;
-  chat: ReactNode;
-}) {
+export function DesktopLayout({ chat }: { chat: ReactNode }) {
   return (
-    <div className="hidden lg:grid lg:grid-cols-[210px_1fr] gap-3 p-4 h-screen">
+    <div className="hidden lg:grid lg:grid-cols-1 gap-3 p-4 h-screen">
       {/* HUD corner decorations */}
       <div
         aria-hidden="true"
@@ -28,7 +22,6 @@ export function DesktopLayout({
           zIndex: 3, pointerEvents: 'none',
         }}
       />
-      <div className="h-full overflow-hidden">{history}</div>
       <main className="h-full overflow-hidden">{chat}</main>
     </div>
   );

@@ -1,12 +1,10 @@
-import { useEffect } from 'react';
 import { ThemeProvider } from './components/layout/ThemeProvider';
 import { DesktopLayout } from './components/layout/DesktopLayout';
 import { MobileLayout } from './components/layout/MobileLayout';
 import { ChatFrame } from './components/chat/ChatFrame';
-import { HistoryPanel } from './components/panels/HistoryPanel';
 import { SettingsModal } from './components/settings/SettingsModal';
-import { useSessionStore } from './stores/sessionStore';
 import { useUIStore } from './stores/uiStore';
+import { ToastProvider } from './hooks/useToast';
 
 function MobileSettingsShortcut() {
   const openSettings = useUIStore((s) => s.openSettings);
@@ -25,28 +23,14 @@ function MobileSettingsShortcut() {
 }
 
 function App() {
-  const sessions = useSessionStore((s) => s.sessions);
-  const createSession = useSessionStore((s) => s.createSession);
-
-  useEffect(() => {
-    if (sessions.length === 0) {
-      createSession();
-    }
-  }, [sessions.length, createSession]);
-
   return (
-    <ThemeProvider>
-      <DesktopLayout
-        history={<HistoryPanel />}
-        chat={<ChatFrame />}
-      />
-      <MobileLayout
-        chat={<ChatFrame />}
-        history={<HistoryPanel />}
-        settings={<MobileSettingsShortcut />}
-      />
-      <SettingsModal />
-    </ThemeProvider>
+    <ToastProvider>
+      <ThemeProvider>
+        <DesktopLayout chat={<ChatFrame />} />
+        <MobileLayout chat={<ChatFrame />} settings={<MobileSettingsShortcut />} />
+        <SettingsModal />
+      </ThemeProvider>
+    </ToastProvider>
   );
 }
 

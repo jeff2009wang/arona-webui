@@ -1,20 +1,17 @@
 import { type ReactNode } from 'react';
 import { useUIStore } from '../../stores/uiStore';
-import { MessageSquare, Clock, Settings } from 'lucide-react';
+import { MessageSquare, Settings } from 'lucide-react';
 
 const tabs = [
-  { id: 'chat', label: 'Chat', icon: MessageSquare },
-  { id: 'history', label: 'History', icon: Clock },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'chat' as const, label: 'Chat', icon: MessageSquare },
+  { id: 'settings' as const, label: 'Settings', icon: Settings },
 ] as const;
 
 export function MobileLayout({
   chat,
-  history,
   settings,
 }: {
   chat: ReactNode;
-  history: ReactNode;
   settings: ReactNode;
 }) {
   const activeMobileTab = useUIStore((s) => s.activeMobileTab);
@@ -24,7 +21,6 @@ export function MobileLayout({
     <div className="lg:hidden flex flex-col h-screen">
       <div className="flex-1 overflow-hidden p-3 relative">
         <div hidden={activeMobileTab !== 'chat'} className="h-full">{chat}</div>
-        <div hidden={activeMobileTab !== 'history'} className="h-full">{history}</div>
         <div hidden={activeMobileTab !== 'settings'} className="h-full">{settings}</div>
       </div>
       <nav
@@ -38,7 +34,7 @@ export function MobileLayout({
               role="tab"
               aria-selected={activeMobileTab === tab.id}
               aria-label={tab.label}
-              onClick={() => setActiveMobileTab(tab.id as 'chat' | 'history' | 'settings')}
+              onClick={() => setActiveMobileTab(tab.id)}
               className={`flex flex-col items-center gap-1 text-[9px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
                 activeMobileTab === tab.id ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'
               }`}

@@ -1,12 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import App from '../App';
 
-// Mock child components to keep the test lightweight
 vi.mock('../components/layout/ThemeProvider', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-
 
 vi.mock('../components/layout/DesktopLayout', () => ({
   DesktopLayout: () => <div data-testid="desktop-layout">Desktop</div>,
@@ -24,15 +22,10 @@ vi.mock('../components/settings/SettingsModal', () => ({
   SettingsModal: () => <div data-testid="settings-modal">Settings</div>,
 }));
 
-// Mock session store
-const mockCreateSession = vi.fn();
-const mockSessions: unknown[] = [];
-
 vi.mock('../stores/sessionStore', () => ({
   useSessionStore: vi.fn((selector) => {
     const state = {
-      sessions: mockSessions,
-      createSession: mockCreateSession,
+      currentSession: { id: 's1', messages: [] },
     };
     return selector ? selector(state) : state;
   }),
@@ -48,11 +41,6 @@ vi.mock('../stores/uiStore', () => ({
 }));
 
 describe('App', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockSessions.length = 0;
-  });
-
   it('renders desktop and mobile layouts', () => {
     render(<App />);
     expect(screen.getByTestId('desktop-layout')).toBeInTheDocument();
@@ -68,16 +56,5 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByTestId('mobile-settings')).toBeInTheDocument();
     expect(screen.getByText('Open Settings')).toBeInTheDocument();
-  });
-
-  it('creates a session on first load when no sessions exist', () => {
-    render(<App />);
-    expect(mockCreateSession).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not create a session when sessions already exist', () => {
-    mockSessions.push({ id: '1', title: 'Test' } as unknown);
-    render(<App />);
-    expect(mockCreateSession).not.toHaveBeenCalled();
   });
 });
