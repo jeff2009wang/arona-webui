@@ -225,6 +225,8 @@ export async function streamHermesRunCompletion({
           case 'reasoning.available': {
             if (event.text) {
               onReasoningChunk?.(event.text);
+              // Hermes sends the full accumulated reasoning text on each event.
+              // useLLM handles replacement / prefix filtering based on isHermes.
               onNodeUpdate?.({ type: 'reasoning', content: event.text } as ReasoningNode);
             }
             break;
