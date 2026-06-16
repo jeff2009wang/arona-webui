@@ -25,9 +25,8 @@ const mockSession = {
   ], createdAt: Date.now(), updatedAt: Date.now(), titleGenerated: true, summaryGenerated: true,
 };
 
-const mockSessionStore: Pick<SessionState, 'sessions' | 'currentSessionId' | 'isStreaming'> = {
-  sessions: [mockSession],
-  currentSessionId: 's1',
+const mockSessionStore: Pick<SessionState, 'currentSession' | 'isStreaming'> = {
+  currentSession: mockSession,
   isStreaming: false,
 };
 

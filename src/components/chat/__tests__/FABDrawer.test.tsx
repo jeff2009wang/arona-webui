@@ -1,9 +1,11 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FABDrawer } from '../FABDrawer';
 import { useSessionStore } from '../../../stores/sessionStore';
 import { useUIStore } from '../../../stores/uiStore';
 import { useLLM } from '../../../hooks/useLLM';
+import type { SessionState } from '../../../stores/sessionStore';
+import type { UIState } from '../../../stores/uiStore';
 
 vi.mock('../../../stores/sessionStore', () => ({ useSessionStore: vi.fn() }));
 vi.mock('../../../stores/uiStore', () => ({ useUIStore: vi.fn() }));
@@ -11,17 +13,29 @@ vi.mock('../../../hooks/useLLM', () => ({ useLLM: vi.fn() }));
 
 const mockStop = vi.fn();
 const mockClear = vi.fn();
-const mockExport = vi.fn();
 const mockOpenSettings = vi.fn();
 
+const sessionState = {
+  isStreaming: false,
+  clearChat: mockClear,
+};
+
+const uiState = {
+  openSettings: mockOpenSettings,
+};
+
 beforeEach(() => {
-  vi.mocked(useSessionStore).mockImplementation((selector: any) =>
-    selector({ isStreaming: false, currentSessionId: 's1', clearSession: mockClear, exportToFile: mockExport })
+  vi.mocked(useSessionStore).mockImplementation((selector: (state: SessionState) => unknown) =>
+    selector(sessionState as unknown as SessionState)
   );
-  vi.mocked(useUIStore).mockImplementation((selector: any) =>
-    selector({ openSettings: mockOpenSettings })
+  vi.mocked(useUIStore).mockImplementation((selector: (state: UIState) => unknown) =>
+    selector(uiState as unknown as UIState)
   );
   vi.mocked(useLLM).mockReturnValue({ sendMessage: vi.fn(), stop: mockStop });
+});
+
+afterEach(() => {
+  cleanup();
 });
 
 describe('FABDrawer', () => {
@@ -48,10 +62,17 @@ describe('FABDrawer', () => {
     expect(mockOpenSettings).toHaveBeenCalledOnce();
   });
 
-  it('calls clearSession when clear sub-button clicked', () => {
+  it('calls clearChat when clear sub-button clicked', () => {
     render(<FABDrawer />);
     fireEvent.click(screen.getByRole('button', { name: /tools menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /clear/i }));
-    expect(mockClear).toHaveBeenCalledWith('s1');
+    expect(mockClear).toHaveBeenCalledOnce();
+  });
+
+  it('does not render export or import buttons', () => {
+    render(<FABDrawer />);
+    fireEvent.click(screen.getByRole('button', { name: /tools menu/i }));
+    expect(screen.queryByRole('button', { name: /export/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /import/i })).toBeNull();
   });
 });

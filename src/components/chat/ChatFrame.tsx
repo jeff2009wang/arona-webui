@@ -1,63 +1,137 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { ChatHeader } from './ChatHeader';
-import { AssistantBubble } from './AssistantBubble';
-import { UserBubble } from './UserBubble';
-import { ToolCard } from './ToolCard';
-import { TypingIndicator } from './TypingIndicator';
+import { ThinkingBubble } from './ThinkingBubble';
 import { ChatComposer } from './ChatComposer';
 import { FABDrawer } from './FABDrawer';
+import { EmptyChatState } from './EmptyChatState';
+import { AnimatedMessage } from './AnimatedMessage';
+import { ToolActivityGroup } from './ToolActivityGroup';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useUIStore } from '../../stores/uiStore';
 import { useLLM } from '../../hooks/useLLM';
-import type { Message, Persona } from '../../types';
+import type { Persona, Message } from '../../types';
 
-const AVATAR: Record<string, string> = {
-  arona: '/assets/placeholders/avatar-arona.svg',
-  plana: '/assets/placeholders/avatar-plana.svg',
+const AVATAR: Record<Persona, string> = {
+  arona: '/assets/characters/arona.jpg',
+  plana: '/assets/characters/plana.jpg',
 };
 
-const CHAR_NAME: Record<string, string> = { arona: 'Arona', plana: 'Plana' };
-const CHAR_STATUS: Record<string, string> = {
+const CHAR_NAME: Record<Persona, string> = { arona: 'Arona', plana: 'Plana' };
+const CHAR_STATUS: Record<Persona, string> = {
   arona: 'Online · Schale Terminal',
   plana: 'Online · Aria Terminal',
 };
 
-function renderMessage(message: Message, persona: Persona) {
-  if (message.role === 'user') return <UserBubble key={message.id} message={message} />;
-  if (message.role === 'assistant') return <AssistantBubble key={message.id} message={message} persona={persona} />;
-  if (message.role === 'tool' && message.toolCalls) {
-    return (
-      <div key={message.id} className="flex flex-col gap-2">
-        {message.toolCalls.map((tc) => <ToolCard key={tc.id} toolCall={tc} />)}
-      </div>
-    );
-  }
-  return null;
-}
-
 export function ChatFrame() {
   const persona = useSettingsStore((s) => s.persona);
   const model = useSettingsStore((s) => s.model);
-  const currentSessionId = useSessionStore((s) => s.currentSessionId);
-  const sessions = useSessionStore((s) => s.sessions);
+  const session = useSessionStore((s) => s.currentSession);
   const isStreaming = useSessionStore((s) => s.isStreaming);
   const { sendMessage, stop } = useLLM();
+  const openSettings = useUIStore((s) => s.openSettings);
 
-  const session = sessions.find((s) => s.id === currentSessionId);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
+
+  const lastMessageContentLength = useMemo(() => {
+    const last = session?.messages.at(-1);
+    return last?.content.length ?? 0;
+  }, [session?.messages]);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const el = messagesEndRef.current;
+      if (!el || typeof el.scrollIntoView !== 'function') return;
+      el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+    });
+  }, []);
+
+  const updateAtBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 24;
+    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (isAtBottomRef.current) {
+      scrollToBottom(!isStreaming);
     }
-  }, [session?.messages.length, isStreaming]);
+  }, [session?.messages.length, lastMessageContentLength, scrollToBottom, isStreaming]);
+
+  useEffect(() => {
+    isAtBottomRef.current = true;
+    scrollToBottom(true);
+  }, [session?.id, scrollToBottom]);
 
   const handleSend = (text: string, images: string[]) => {
-    if (currentSessionId) sendMessage(currentSessionId, text, images);
+    isAtBottomRef.current = true;
+    sendMessage(text, images);
   };
 
+  const handleRegenerate = useCallback(() => {
+    if (!session) return;
+    const lastUserMsg = [...session.messages].reverse().find((m) => m.role === 'user');
+    if (lastUserMsg) {
+      isAtBottomRef.current = true;
+      sendMessage(lastUserMsg.content, lastUserMsg.images ?? []);
+    }
+  }, [session, sendMessage]);
+
+  const hasMessages = (session?.messages.length ?? 0) > 0;
+
+  const lastAssistantIndex = useMemo(() => {
+    if (!session) return -1;
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      if (session.messages[i].role === 'assistant') return i;
+    }
+    return -1;
+  }, [session]);
+
+  const lastMessage = session?.messages.at(-1);
+  const isLastMessageEmptyAssistant =
+    isStreaming &&
+    lastMessage?.role === 'assistant' &&
+    (lastMessage?.content ?? '').trim().length === 0;
+
+  const renderGroups = useMemo(() => {
+    if (!session) return [] as Array<
+      | { type: 'message'; message: Message }
+      | { type: 'tool'; messages: Message[]; toolCalls: NonNullable<Message['toolCalls']> }
+    >;
+    const groups: Array<
+      | { type: 'message'; message: Message }
+      | { type: 'tool'; messages: Message[]; toolCalls: NonNullable<Message['toolCalls']> }
+    > = [];
+
+    for (const m of session.messages) {
+      const calls = m.toolCalls;
+      if (m.role === 'tool' && calls && calls.length > 0) {
+        const last = groups[groups.length - 1];
+        if (last?.type === 'tool') {
+          last.messages.push(m);
+          last.toolCalls.push(...calls);
+        } else {
+          groups.push({ type: 'tool', messages: [m], toolCalls: [...calls] });
+        }
+      } else {
+        groups.push({ type: 'message', message: m });
+      }
+    }
+    return groups;
+  }, [session]);
+
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       className="flex flex-col h-full"
       style={{
         position: 'relative',
@@ -79,20 +153,57 @@ export function ChatFrame() {
         model={model}
       />
 
-      {/* Message list */}
       <div
         ref={scrollRef}
+        onScroll={updateAtBottom}
         className="flex-1 overflow-y-auto"
-        style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}
+        style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}
       >
-        {session?.messages.map((m) => renderMessage(m, persona))}
-        {isStreaming && <TypingIndicator persona={persona} />}
+        {!hasMessages && (
+          <EmptyChatState persona={persona} onOpenSettings={openSettings} />
+        )}
+        {renderGroups.map((group, groupIdx) => {
+          const isLastGroup = groupIdx === renderGroups.length - 1;
+          if (group.type === 'tool') {
+            return (
+              <ToolActivityGroup
+                key={`tool-group-${groupIdx}`}
+                toolCalls={group.toolCalls}
+                persona={persona}
+                isStreaming={isStreaming && isLastGroup}
+              />
+            );
+          }
+
+          const m = group.message;
+          const idx = session!.messages.indexOf(m);
+          const isLast = idx === session!.messages.length - 1;
+          if (isLast && isLastMessageEmptyAssistant) {
+            return (
+              <ThinkingBubble
+                key="thinking"
+                persona={persona}
+                reasoning={m.reasoning}
+                isActive
+              />
+            );
+          }
+          return (
+            <AnimatedMessage
+              key={m.id}
+              message={m}
+              persona={persona}
+              isStreaming={isStreaming && m.role === 'assistant' && idx === lastAssistantIndex}
+              onRegenerate={handleRegenerate}
+            />
+          );
+        })}
+        <div ref={messagesEndRef} style={{ height: 1, flexShrink: 0 }} />
       </div>
 
-      {/* FAB overlay */}
       <FABDrawer />
 
-      <ChatComposer onSend={handleSend} disabled={isStreaming} />
-    </div>
+      <ChatComposer onSend={handleSend} disabled={isStreaming} persona={persona} />
+    </motion.div>
   );
 }

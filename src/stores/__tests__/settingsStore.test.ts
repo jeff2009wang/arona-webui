@@ -8,7 +8,7 @@ describe('settingsStore', () => {
 
   it('has default values', () => {
     const state = useSettingsStore.getState();
-    expect(state.baseUrl).toBe('https://api.openai.com/v1');
+    expect(state.baseUrl).toBe('http://192.168.122.152:8642/v1');
     expect(state.persona).toBe('arona');
   });
 

@@ -2,10 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { Persona } from '../../types';
 
-const BG_PATHS: Record<Persona, string> = {
-  arona: '/assets/local/backgrounds/arona-light.png',
-  plana: '/assets/local/backgrounds/plana-dark.png',
-};
+const BG_EXTENSIONS = ['.jpg', '.png', '.webp'] as const;
 
 const FALLBACK_BG: Record<Persona, string> = {
   arona: 'linear-gradient(145deg,#c9eeff 0%,#a8d8f0 18%,#d4f0ff 35%,#b8e8ff 50%,#e8f8ff 65%,#cce8f8 80%,#b0d8f0 100%)',
@@ -33,12 +30,27 @@ function probeImage(src: string): Promise<boolean> {
   });
 }
 
+async function findBackground(persona: Persona, localPath?: string): Promise<string | null> {
+  // If user provided a local path, probe it first.
+  if (localPath && localPath.trim().length > 0) {
+    const trimmed = localPath.trim();
+    if (await probeImage(trimmed)) return trimmed;
+  }
+  // Fallback to persona-named files in public folder.
+  for (const ext of BG_EXTENSIONS) {
+    const src = `/assets/local/backgrounds/${persona === 'arona' ? 'arona-light' : 'plana-dark'}${ext}`;
+    if (await probeImage(src)) return src;
+  }
+  return null;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const persona = useSettingsStore((s) => s.persona);
   const enableCgBackground = useSettingsStore((s) => s.enableCgBackground);
   const backgroundOpacity = useSettingsStore((s) => s.backgroundOpacity);
   const backgroundBlur = useSettingsStore((s) => s.backgroundBlur);
-  const [hasCgBg, setHasCgBg] = useState(false);
+  const localBackgroundPath = useSettingsStore((s) => s.localBackgroundPath);
+  const [bgSrc, setBgSrc] = useState<string | null>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', persona);
@@ -47,19 +59,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     if (!enableCgBackground) {
-      setHasCgBg(false);
+      setBgSrc(null);
       return;
     }
-    probeImage(BG_PATHS[persona]).then((ok) => {
-      if (!cancelled) setHasCgBg(ok);
+    findBackground(persona, localBackgroundPath).then((src) => {
+      if (!cancelled) setBgSrc(src);
     });
     return () => {
       cancelled = true;
     };
-  }, [persona, enableCgBackground]);
+  }, [persona, enableCgBackground, localBackgroundPath]);
 
-  const bgStyle = hasCgBg
-    ? `${buildOverlay(persona, backgroundOpacity)}, url("${BG_PATHS[persona]}") center/cover no-repeat`
+  const bgStyle = bgSrc
+    ? `${buildOverlay(persona, backgroundOpacity)}, url("${bgSrc}") center/cover no-repeat`
     : FALLBACK_BG[persona];
 
   const blurPx = backgroundBlur > 0 ? backgroundBlur : undefined;
@@ -75,6 +87,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           zIndex: 0,
           background: bgStyle,
           filter: blurPx ? `blur(${blurPx}px)` : undefined,
+          transition: 'background 400ms ease, filter 400ms ease',
         }}
       />
       <div style={{ position: 'relative', zIndex: 2, minHeight: '100vh' }}>
