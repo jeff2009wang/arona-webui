@@ -1,37 +1,53 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatFrame } from '../ChatFrame';
 import { useSessionStore } from '../../../stores/sessionStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { useLLM } from '../../../hooks/useLLM';
+import type { SessionState } from '../../../stores/sessionStore';
+import type { SettingsState } from '../../../stores/settingsStore';
 
 vi.mock('../../../stores/sessionStore', () => ({ useSessionStore: vi.fn() }));
 vi.mock('../../../stores/settingsStore', () => ({ useSettingsStore: vi.fn() }));
 vi.mock('../../../hooks/useLLM', () => ({ useLLM: vi.fn() }));
 
 vi.mock('../FABDrawer', () => ({ FABDrawer: () => <div data-testid="fab-drawer" /> }));
-vi.mock('../ChatHeader', () => ({ ChatHeader: (p: any) => <div data-testid="chat-header">{p.name}</div> }));
+vi.mock('../ChatHeader', () => ({ ChatHeader: (p: { name: string }) => <div data-testid="chat-header">{p.name}</div> }));
 vi.mock('../ChatComposer', () => ({ ChatComposer: () => <div data-testid="chat-composer" /> }));
-vi.mock('../AssistantBubble', () => ({ AssistantBubble: (p: any) => <div>{p.message.content}</div> }));
-vi.mock('../UserBubble', () => ({ UserBubble: (p: any) => <div>{p.message.content}</div> }));
-vi.mock('../ToolCard', () => ({ ToolCard: () => <div>tool</div> }));
+vi.mock('../UserBubble', () => ({ UserBubble: (p: { message: { content: string } }) => <div>{p.message.content}</div> }));
+vi.mock('../ToolActivityGroup', () => ({ ToolActivityGroup: () => <div data-testid="tool-activity-group"></div> }));
 vi.mock('../TypingIndicator', () => ({ TypingIndicator: () => <div>typing</div> }));
 
 const mockSession = {
-  id: 's1', title: 'Test', messages: [
-    { id: 'm1', role: 'user', content: 'hi', createdAt: Date.now() },
-    { id: 'm2', role: 'assistant', content: 'hello', createdAt: Date.now() },
-  ], createdAt: Date.now(), updatedAt: Date.now(),
+  id: 's1', title: 'Test', summary: 'Test summary', messages: [
+    { id: 'm1', role: 'user' as const, content: 'hi', createdAt: Date.now() },
+    { id: 'm2', role: 'assistant' as const, content: 'hello', createdAt: Date.now() },
+  ], createdAt: Date.now(), updatedAt: Date.now(), titleGenerated: true, summaryGenerated: true,
+};
+
+const mockSessionStore: Pick<SessionState, 'sessions' | 'currentSessionId' | 'isStreaming'> = {
+  sessions: [mockSession],
+  currentSessionId: 's1',
+  isStreaming: false,
+};
+
+const mockSettingsStore = {
+  persona: 'arona' as const,
+  model: 'gpt-4o-mini',
 };
 
 beforeEach(() => {
-  vi.mocked(useSessionStore).mockImplementation((s: any) =>
-    s({ sessions: [mockSession], currentSessionId: 's1', isStreaming: false })
+  vi.mocked(useSessionStore).mockImplementation((selector: (state: SessionState) => unknown) =>
+    selector(mockSessionStore as SessionState)
   );
-  vi.mocked(useSettingsStore).mockImplementation((s: any) =>
-    s({ persona: 'arona', model: 'gpt-4o-mini' })
+  vi.mocked(useSettingsStore).mockImplementation((selector: (state: SettingsState) => unknown) =>
+    selector(mockSettingsStore as SettingsState)
   );
   vi.mocked(useLLM).mockReturnValue({ sendMessage: vi.fn(), stop: vi.fn() });
+});
+
+afterEach(() => {
+  cleanup();
 });
 
 describe('ChatFrame', () => {
