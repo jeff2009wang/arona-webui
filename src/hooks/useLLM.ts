@@ -5,7 +5,7 @@ import { streamHermesRunCompletion, isHermesBackend } from '../lib/hermes';
 import { extractErrorMessage } from '../lib/error';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useSessionStore } from '../stores/sessionStore';
-import type { Message, ToolCall } from '../types';
+import type { Message, MessageNode, TextNode, ReasoningNode, ToolCallNode } from '../types';
 
 function generateMessageId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -35,49 +35,13 @@ export function useLLM() {
   const setStreaming = useSessionStore((s) => s.setStreaming);
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeRunIdRef = useRef<string | null>(null);
-  const streamingToolsRef = useRef<
-    Record<
-      string,
-      {
-        id: string;
-        name: string;
-        arguments: string;
-        status: ToolCall['status'];
-        startedAt: number;
-        finishedAt?: number;
-      }
-    >
-  >({});
-  const toolMessageIdRef = useRef<string | null>(null);
   const contentFlushRafRef = useRef<number | null>(null);
-
-  const buildToolCalls = (): ToolCall[] => {
-    return Object.values(streamingToolsRef.current).map((tc) => {
-      let parsedArgs: Record<string, unknown> = {};
-      try {
-        parsedArgs = tc.arguments ? JSON.parse(tc.arguments) : {};
-      } catch {
-        parsedArgs = {};
-      }
-      return {
-        id: tc.id,
-        name: tc.name || 'unknown',
-        arguments: parsedArgs,
-        status: tc.status,
-        startedAt: tc.startedAt,
-        finishedAt: tc.finishedAt,
-      };
-    });
-  };
 
   const sendMessage = useCallback(
     async (content: string, images?: string[]) => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-
-      streamingToolsRef.current = {};
-      toolMessageIdRef.current = null;
 
       const session = useSessionStore.getState().currentSession;
       if (!session) return;
@@ -95,34 +59,24 @@ export function useLLM() {
       const assistantMessage: Message = {
         id: generateMessageId(),
         role: 'assistant',
-        content: '',
+        content: [] as MessageNode[],
         createdAt: Date.now(),
       };
 
       addMessage(assistantMessage);
       setStreaming(true);
 
-      const contentRef = { current: '' };
-      const reasoningRef = { current: '' };
-      const pendingContentRef = { current: '' };
-      const pendingReasoningRef = { current: '' };
+      const nodesRef = { current: [] as MessageNode[] };
+      const pendingNodesRef = { current: [] as MessageNode[] };
 
       const flushContentUpdate = () => {
         if (contentFlushRafRef.current) {
           cancelAnimationFrame(contentFlushRafRef.current);
           contentFlushRafRef.current = null;
         }
-        const updates: Partial<Message> = {};
-        if (contentRef.current !== pendingContentRef.current) {
-          updates.content = contentRef.current;
-          pendingContentRef.current = contentRef.current;
-        }
-        if (reasoningRef.current !== pendingReasoningRef.current) {
-          updates.reasoning = reasoningRef.current;
-          pendingReasoningRef.current = reasoningRef.current;
-        }
-        if (Object.keys(updates).length > 0) {
-          updateMessage(assistantMessage.id, updates);
+        if (nodesRef.current !== pendingNodesRef.current) {
+          updateMessage(assistantMessage.id, { content: nodesRef.current });
+          pendingNodesRef.current = nodesRef.current;
         }
       };
 
@@ -134,29 +88,62 @@ export function useLLM() {
         });
       };
 
+      const handleNodeUpdate = (node: MessageNode, isHermes = false) => {
+        const nodes = nodesRef.current;
+        if (node.type === 'text') {
+          const last = nodes[nodes.length - 1];
+          if (last && last.type === 'text') {
+            (last as TextNode).content += (node as TextNode).content;
+          } else {
+            nodes.push({ type: 'text', content: (node as TextNode).content });
+          }
+        } else if (node.type === 'reasoning') {
+          const last = nodes[nodes.length - 1];
+          const newContent = (node as ReasoningNode).content;
+          if (isHermes) {
+            // Hermes sends full reasoning text on each reasoning.available event.
+            // Replace the last reasoning node, and skip if it's just a prefix of the text content.
+            const textContent = nodes
+              .filter((n) => n.type === 'text')
+              .map((n) => (n as TextNode).content)
+              .join('');
+            if (newContent.trim() && !textContent.trim().startsWith(newContent.trim())) {
+              if (last && last.type === 'reasoning') {
+                (last as ReasoningNode).content = newContent;
+              } else {
+                nodes.push({ type: 'reasoning', content: newContent });
+              }
+            }
+          } else {
+            // OpenAI reasoning deltas: append
+            if (last && last.type === 'reasoning') {
+              (last as ReasoningNode).content += newContent;
+            } else {
+              nodes.push({ type: 'reasoning', content: newContent });
+            }
+          }
+        } else if (node.type === 'tool_call') {
+          const tc = node as ToolCallNode;
+          const existingIndex = nodes.findIndex((n) => n.type === 'tool_call' && (n as ToolCallNode).id === tc.id);
+          if (existingIndex >= 0) {
+            const existing = nodes[existingIndex] as ToolCallNode;
+            nodes[existingIndex] = {
+              ...existing,
+              ...tc,
+              arguments: tc.arguments && Object.keys(tc.arguments).length > 0 ? tc.arguments : existing.arguments,
+              startedAt: existing.startedAt,
+            };
+          } else {
+            nodes.push({ ...tc });
+          }
+        }
+        scheduleContentFlush();
+      };
+
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      let streamErrored = false;
       activeRunIdRef.current = null;
-
-      const syncToolMessage = () => {
-        const toolCalls = buildToolCalls();
-        if (toolCalls.length === 0) return;
-        if (toolMessageIdRef.current) {
-          updateMessage(toolMessageIdRef.current, { toolCalls });
-        } else {
-          const toolMessage: Message = {
-            id: generateMessageId(),
-            role: 'tool',
-            content: '',
-            createdAt: Date.now(),
-            toolCalls,
-          };
-          toolMessageIdRef.current = toolMessage.id;
-          addMessage(toolMessage);
-        }
-      };
 
       try {
         const currentMessages = useSessionStore.getState().currentSession?.messages ?? [];
@@ -164,7 +151,7 @@ export function useLLM() {
           (m) =>
             (m.role === 'user' || m.role === 'assistant' || m.role === 'tool') &&
             m.status !== 'error' &&
-            (m.role !== 'assistant' || m.content.trim() !== '')
+            (m.role !== 'assistant' || (Array.isArray(m.content) ? m.content.length > 0 : m.content.trim() !== ''))
         );
 
         if (isHermesBackend(settings)) {
@@ -172,32 +159,7 @@ export function useLLM() {
             settings,
             messages: streamMessages,
             sessionId: session.id,
-            onChunk: (chunk) => {
-              contentRef.current += chunk;
-              scheduleContentFlush();
-            },
-            onReasoningChunk: (chunk) => {
-              const normalizedChunk = chunk.trim();
-              const normalizedContent = contentRef.current.trim();
-              if (
-                normalizedChunk &&
-                !normalizedContent.startsWith(normalizedChunk)
-              ) {
-                reasoningRef.current = chunk;
-                scheduleContentFlush();
-              }
-            },
-            onToolCall: (toolCall) => {
-              streamingToolsRef.current[toolCall.id] = {
-                id: toolCall.id,
-                name: toolCall.name,
-                arguments: toolCall.arguments,
-                status: toolCall.status,
-                startedAt: streamingToolsRef.current[toolCall.id]?.startedAt ?? Date.now(),
-                finishedAt: toolCall.status !== 'running' ? Date.now() : undefined,
-              };
-              syncToolMessage();
-            },
+            onNodeUpdate: (node) => handleNodeUpdate(node, true),
             onRunId: (runId) => {
               activeRunIdRef.current = runId;
             },
@@ -207,30 +169,7 @@ export function useLLM() {
           await streamChatCompletion({
             settings,
             messages: streamMessages,
-            onChunk: (chunk) => {
-              contentRef.current += chunk;
-              scheduleContentFlush();
-            },
-            onReasoningChunk: (chunk) => {
-              reasoningRef.current += chunk;
-              scheduleContentFlush();
-            },
-            onToolCall: (delta) => {
-              const existing = streamingToolsRef.current[delta.id];
-              if (existing) {
-                existing.name = delta.name || existing.name;
-                existing.arguments += delta.arguments;
-              } else {
-                streamingToolsRef.current[delta.id] = {
-                  id: delta.id,
-                  name: delta.name,
-                  arguments: delta.arguments,
-                  status: 'running',
-                  startedAt: Date.now(),
-                };
-              }
-              syncToolMessage();
-            },
+            onNodeUpdate: (node) => handleNodeUpdate(node, false),
             signal: controller.signal,
           });
         }
@@ -238,34 +177,21 @@ export function useLLM() {
         if (error instanceof DOMException && error.name === 'AbortError') {
           // User stopped — keep current content
         } else {
-          streamErrored = true;
           const message = extractErrorMessage(error);
           console.error('[useLLM] stream error:', error);
           if (contentFlushRafRef.current) {
             cancelAnimationFrame(contentFlushRafRef.current);
             contentFlushRafRef.current = null;
           }
-          contentRef.current = message;
-          pendingContentRef.current = message;
+          nodesRef.current = [{ type: 'text', content: message }];
+          pendingNodesRef.current = nodesRef.current;
           updateMessage(assistantMessage.id, {
-            content: message,
+            content: nodesRef.current,
             status: 'error',
           });
         }
       } finally {
         flushContentUpdate();
-        if (toolMessageIdRef.current) {
-          const finalStatus: ToolCall['status'] = streamErrored ? 'error' : 'success';
-          for (const tc of Object.values(streamingToolsRef.current)) {
-            tc.status = finalStatus;
-            tc.finishedAt = Date.now();
-          }
-          updateMessage(toolMessageIdRef.current, {
-            toolCalls: buildToolCalls(),
-          });
-        }
-        streamingToolsRef.current = {};
-        toolMessageIdRef.current = null;
         activeRunIdRef.current = null;
 
         if (abortControllerRef.current === controller) {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { ToolCall } from '../../types';
+import type { ToolCallNode } from '../../types';
 
 const STATE_CONFIG = {
   running: {
@@ -24,12 +24,12 @@ const STATE_CONFIG = {
 } as const;
 
 interface ToolCardProps {
-  toolCall: ToolCall;
+  toolCall: ToolCallNode;
 }
 
 export function ToolCard({ toolCall }: ToolCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const cfg = STATE_CONFIG[toolCall.status];
+  const cfg = STATE_CONFIG[toolCall.status as 'running' | 'success' | 'error'];
   const isRunning = toolCall.status === 'running';
   const isError = toolCall.status === 'error';
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, AlertCircle, Check, Loader2, Sparkles } from 'lucide-react';
-import type { ToolCall, Persona } from '../../types';
+import type { ToolCallNode, Persona } from '../../types';
 
 const TOOL_NAME_MAP: Record<string, string> = {
   web_search: 'Web Search',
@@ -23,13 +23,13 @@ function formatDuration(startedAt: number, finishedAt?: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function getGroupStatus(toolCalls: ToolCall[]): 'running' | 'error' | 'success' {
+function getGroupStatus(toolCalls: ToolCallNode[]): 'running' | 'error' | 'success' {
   if (toolCalls.some((tc) => tc.status === 'running')) return 'running';
   if (toolCalls.some((tc) => tc.status === 'error')) return 'error';
   return 'success';
 }
 
-function getSummaryText(toolCalls: ToolCall[], status: 'running' | 'error' | 'success'): string {
+function getSummaryText(toolCalls: ToolCallNode[], status: 'running' | 'error' | 'success'): string {
   const count = toolCalls.length;
   if (status === 'running') return `正在执行 ${count} 个工具调用`;
   if (status === 'error') return `${count} 个工具调用完成，其中有错误`;
@@ -44,7 +44,7 @@ function isEmptyPreview(args: Record<string, unknown>): boolean {
   return false;
 }
 
-function getPreviewText(toolCall: ToolCall): string {
+function getPreviewText(toolCall: ToolCallNode): string {
   const args = toolCall.arguments ?? {};
   if (!isEmptyPreview(args)) {
     const preview = args.preview;
@@ -58,7 +58,7 @@ function getPreviewText(toolCall: ToolCall): string {
 }
 
 interface ToolActivityGroupProps {
-  toolCalls: ToolCall[];
+  toolCalls: ToolCallNode[];
   persona?: Persona;
   isStreaming?: boolean;
 }

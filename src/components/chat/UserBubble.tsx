@@ -69,7 +69,12 @@ export function UserBubble({ message }: { message: Message }) {
                 lineBreak: 'loose',
               }}
             >
-              {message.content}
+              {Array.isArray(message.content)
+                ? message.content
+                    .filter((n) => n.type === 'text')
+                    .map((n) => (n as { content: string }).content)
+                    .join('')
+                : message.content}
             </div>
           </div>
         )}

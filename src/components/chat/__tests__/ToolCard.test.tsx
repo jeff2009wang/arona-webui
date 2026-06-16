@@ -1,9 +1,10 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { ToolCard } from '../ToolCard';
-import type { ToolCall } from '../../../types';
+import type { ToolCallNode } from '../../../types';
 
-const base: ToolCall = {
+const base: ToolCallNode = {
+  type: 'tool_call',
   id: 'tc1',
   name: 'web_search',
   arguments: { query: 'test' },

@@ -49,10 +49,11 @@ describe('useLLM', () => {
 
     await waitFor(() => {
       const session = useSessionStore.getState().currentSession;
-      expect(session?.messages).toHaveLength(2);
-      expect(session?.messages[0].role).toBe('user');
       expect(session?.messages[1].role).toBe('assistant');
-      expect(session?.messages[1].content).toBe('Hello!');
+      const nodes = session?.messages[1].content as import('../../types').MessageNode[];
+      expect(nodes).toBeDefined();
+      const textNodes = nodes.filter((n) => n.type === 'text') as import('../../types').TextNode[];
+      expect(textNodes.map((n) => n.content).join('')).toBe('Hello!');
     });
   });
 
@@ -80,8 +81,13 @@ describe('useLLM', () => {
     await waitFor(() => {
       const session = useSessionStore.getState().currentSession;
       expect(session?.messages[1].role).toBe('assistant');
-      expect(session?.messages[1].reasoning).toBe('Let me think.');
-      expect(session?.messages[1].content).toBe('Done');
+      const nodes = session?.messages[1].content as import('../../types').MessageNode[];
+      expect(nodes).toBeDefined();
+      expect(nodes.length).toBeGreaterThanOrEqual(1);
+      const reasoningNode = nodes.find((n) => n.type === 'reasoning') as import('../../types').ReasoningNode | undefined;
+      expect(reasoningNode?.content).toBe('Let me think.');
+      const textNodes = nodes.filter((n) => n.type === 'text') as import('../../types').TextNode[];
+      expect(textNodes.map((n) => n.content).join('')).toBe('Done');
     });
   });
 
@@ -97,7 +103,10 @@ describe('useLLM', () => {
     await waitFor(() => {
       const session = useSessionStore.getState().currentSession;
       expect(session?.messages[1].status).toBe('error');
-      expect(session?.messages[1].content).toBe('connection refused');
+      const nodes = session?.messages[1].content as import('../../types').MessageNode[];
+      expect(nodes).toBeDefined();
+      const textNode = nodes.find((n) => n.type === 'text') as import('../../types').TextNode | undefined;
+      expect(textNode?.content).toBe('connection refused');
     });
   });
 
@@ -117,7 +126,10 @@ describe('useLLM', () => {
     await waitFor(() => {
       const session = useSessionStore.getState().currentSession;
       expect(session?.messages[1].status).toBe('error');
-      expect(session?.messages[1].content).toContain('Unauthorized');
+      const nodes = session?.messages[1].content as import('../../types').MessageNode[];
+      expect(nodes).toBeDefined();
+      const textNode = nodes.find((n) => n.type === 'text') as import('../../types').TextNode | undefined;
+      expect(textNode?.content).toContain('Unauthorized');
     });
   });
 
@@ -181,8 +193,12 @@ describe('useLLM', () => {
     await waitFor(() => {
       const session = useSessionStore.getState().currentSession;
       expect(session?.messages[1].role).toBe('assistant');
-      expect(session?.messages[1].content).toBe('Hello!');
-      expect(session?.messages[1].reasoning).toBe('Let me think.');
+      const nodes = session?.messages[1].content as import('../../types').MessageNode[];
+      expect(nodes).toBeDefined();
+      const textNodes = nodes.filter((n) => n.type === 'text') as import('../../types').TextNode[];
+      expect(textNodes.map((n) => n.content).join('')).toBe('Hello!');
+      const reasoningNode = nodes.find((n) => n.type === 'reasoning') as import('../../types').ReasoningNode | undefined;
+      expect(reasoningNode?.content).toBe('Let me think.');
     });
   });
 
@@ -220,8 +236,12 @@ describe('useLLM', () => {
     await waitFor(() => {
       const session = useSessionStore.getState().currentSession;
       expect(session?.messages[1].role).toBe('assistant');
-      expect(session?.messages[1].reasoning).toBe('老师，您好。\n\n我是普拉纳。\n\n请讲。');
-      expect(session?.messages[1].content).toBe('你好，老师。');
+      const nodes = session?.messages[1].content as import('../../types').MessageNode[];
+      expect(nodes).toBeDefined();
+      const reasoningNode = nodes.find((n) => n.type === 'reasoning') as import('../../types').ReasoningNode | undefined;
+      expect(reasoningNode?.content).toBe('老师，您好。\n\n我是普拉纳。\n\n请讲。');
+      const textNodes = nodes.filter((n) => n.type === 'text') as import('../../types').TextNode[];
+      expect(textNodes.map((n) => n.content).join('')).toBe('你好，老师。');
     });
   });
 
@@ -258,8 +278,12 @@ describe('useLLM', () => {
 
     await waitFor(() => {
       const session = useSessionStore.getState().currentSession;
-      expect(session?.messages[1].content).toBe('老师，您好。\n\n普拉纳在。\n\n请讲。');
-      expect(session?.messages[1].reasoning).toBeFalsy();
+      const nodes = session?.messages[1].content as import('../../types').MessageNode[];
+      expect(nodes).toBeDefined();
+      const textNodes = nodes.filter((n) => n.type === 'text') as import('../../types').TextNode[];
+      expect(textNodes.map((n) => n.content).join('')).toBe('老师，您好。\n\n普拉纳在。\n\n请讲。');
+      const reasoningNode = nodes.find((n) => n.type === 'reasoning') as import('../../types').ReasoningNode | undefined;
+      expect(reasoningNode).toBeUndefined();
     });
   });
 });

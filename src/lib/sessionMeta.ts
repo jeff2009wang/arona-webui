@@ -36,7 +36,16 @@ const isGenericGreeting = (text: string): boolean => {
 const collectText = (messages: Message[], maxChars = 600): string => {
   return messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
-    .map((m) => m.content.trim())
+    .map((m) => {
+      if (Array.isArray(m.content)) {
+        return m.content
+          .filter((n) => n.type === 'text')
+          .map((n) => (n as { content: string }).content)
+          .join('')
+          .trim();
+      }
+      return m.content.trim();
+    })
     .filter(Boolean)
     .join('\n')
     .slice(0, maxChars)
@@ -66,10 +75,12 @@ const detectTopic = (text: string): { title: string; summary: string } | null =>
 const extractFirstMeaningfulUserMessage = (messages: Message[]): string | null => {
   for (const m of messages) {
     if (m.role !== 'user') continue;
-    const text = m.content.trim();
-    if (!text) continue;
+    const text = Array.isArray(m.content)
+      ? m.content.filter((n) => n.type === 'text').map((n) => (n as { content: string }).content).join('')
+      : m.content;
+    if (!text.trim()) continue;
     if (isGenericGreeting(text)) continue;
-    return text;
+    return text.trim();
   }
   return null;
 };
@@ -120,8 +131,11 @@ export function generateSessionTitle(messages: Message[]): string {
 
   // Fallback: try to extract from assistant's first reply.
   const firstAssistant = messages.find((m) => m.role === 'assistant');
-  if (firstAssistant?.content.trim()) {
-    const subject = extractSubjectFromText(firstAssistant.content.trim());
+  if (firstAssistant?.content) {
+    const text = Array.isArray(firstAssistant.content)
+      ? firstAssistant.content.filter((n) => n.type === 'text').map((n) => (n as { content: string }).content).join('')
+      : firstAssistant.content;
+    const subject = extractSubjectFromText(text.trim());
     if (subject.length >= 5) return truncateTitle(subject, 16);
   }
 
@@ -153,8 +167,14 @@ export function generateSessionSummary(messages: Message[]): string {
   }
 
   const firstAssistant = messages.find((m) => m.role === 'assistant');
-  if (firstAssistant?.content.trim()) {
-    return `查看 assistant 关于 ${extractSubjectFromText(firstAssistant.content.trim())} 的回复`;
+  if (firstAssistant?.content) {
+    const text = Array.isArray(firstAssistant.content)
+      ? firstAssistant.content.filter((n) => n.type === 'text').map((n) => (n as { content: string }).content).join('')
+      : firstAssistant.content;
+    const trimmed = text.trim();
+    if (trimmed) {
+      return `查看 assistant 关于 ${extractSubjectFromText(trimmed)} 的回复`;
+    }
   }
 
   return '继续当前对话';

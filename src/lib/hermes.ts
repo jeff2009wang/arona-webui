@@ -1,11 +1,11 @@
 import { LLMError } from './llm';
-import type { Message, Settings } from '../types';
+import type { Message, Settings, MessageNode, TextNode, ReasoningNode, ToolCallNode } from '../types';
 
 export interface HermesRunOptions {
   settings: Settings;
   messages: Message[];
   sessionId?: string;
-  onChunk: (chunk: string) => void;
+  onChunk?: (chunk: string) => void;
   onReasoningChunk?: (chunk: string) => void;
   onToolCall?: (toolCall: {
     id: string;
@@ -13,6 +13,7 @@ export interface HermesRunOptions {
     arguments: string;
     status: 'running' | 'success' | 'error';
   }) => void;
+  onNodeUpdate?: (node: MessageNode) => void;
   onRunId?: (runId: string) => void;
   signal?: AbortSignal;
 }
@@ -35,10 +36,22 @@ function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
+export function nodesToApiString(nodes: MessageNode[]): string {
+  let out = '';
+  for (const n of nodes) {
+    if (n.type === 'text') out += n.content;
+    else if (n.type === 'reasoning') out += n.content;
+  }
+  return out;
+}
+
 function buildHistory(messages: Message[]): { role: string; content: string }[] {
   return messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
-    .map((m) => ({ role: m.role, content: m.content }));
+    .map((m) => ({
+      role: m.role,
+      content: Array.isArray(m.content) ? nodesToApiString(m.content) : m.content,
+    }));
 }
 
 async function postRun(
@@ -50,10 +63,6 @@ async function postRun(
   sessionId: string | undefined,
   signal?: AbortSignal
 ): Promise<{ run_id: string }> {
-  // sessionId is the ephemeral current-session id from the frontend.
-  // It changes when the user clears the chat, so HermesAgent treats a
-  // clear-chat as a new conversation while still receiving the in-memory
-  // conversation_history for the current turn.
   const response = await fetch(`${baseUrl}/runs`, {
     method: 'POST',
     headers: {
@@ -117,7 +126,6 @@ async function readEvents(
     try {
       event = JSON.parse(data) as HermesEvent;
     } catch {
-      // Ignore malformed JSON lines
       return;
     }
     handlers.onEvent(event);
@@ -157,6 +165,7 @@ export async function streamHermesRunCompletion({
   onChunk,
   onReasoningChunk,
   onToolCall,
+  onNodeUpdate,
   onRunId,
   signal,
 }: HermesRunOptions): Promise<void> {
@@ -206,36 +215,71 @@ export async function streamHermesRunCompletion({
     {
       onEvent: (event) => {
         switch (event.event) {
-          case 'message.delta':
-            if (event.delta) onChunk(event.delta);
+          case 'message.delta': {
+            if (event.delta) {
+              onChunk?.(event.delta);
+              onNodeUpdate?.({ type: 'text', content: event.delta } as TextNode);
+            }
             break;
-          case 'reasoning.available':
-            if (event.text && onReasoningChunk) onReasoningChunk(event.text);
+          }
+          case 'reasoning.available': {
+            if (event.text) {
+              onReasoningChunk?.(event.text);
+              onNodeUpdate?.({ type: 'reasoning', content: event.text } as ReasoningNode);
+            }
             break;
+          }
           case 'tool.started': {
             const name = event.tool || 'unknown';
             toolCounter += 1;
             const id = `hermes-tool-${toolCounter}`;
             runningToolIds.set(name, id);
-            const args = JSON.stringify({ preview: event.preview || '' });
-            onToolCall?.({ id, name, arguments: args, status: 'running' });
+            const args: Record<string, unknown> = {};
+            if (event.preview) {
+              try {
+                const parsed = JSON.parse(event.preview);
+                if (parsed && typeof parsed === 'object') Object.assign(args, parsed);
+              } catch {
+                args.preview = event.preview;
+              }
+            }
+            if (event.args && typeof event.args === 'object') {
+              Object.assign(args, event.args);
+            }
+            onToolCall?.({ id, name, arguments: JSON.stringify(args), status: 'running' });
+            onNodeUpdate?.({
+              type: 'tool_call',
+              id,
+              name,
+              arguments: args,
+              status: 'running',
+              startedAt: Date.now(),
+            } as ToolCallNode);
             break;
           }
           case 'tool.completed': {
             const name = event.tool || 'unknown';
             const id = runningToolIds.get(name) || `hermes-tool-${toolCounter}`;
             runningToolIds.delete(name);
-            const args = JSON.stringify({ preview: event.preview || '' });
+            const status = event.error ? 'error' : 'success';
             onToolCall?.({
               id,
               name,
-              arguments: args,
-              status: event.error ? 'error' : 'success',
+              arguments: JSON.stringify({ preview: event.preview || '' }),
+              status,
             });
+            onNodeUpdate?.({
+              type: 'tool_call',
+              id,
+              name,
+              arguments: {},
+              status,
+              startedAt: Date.now(),
+              finishedAt: Date.now(),
+            } as ToolCallNode);
             break;
           }
           case 'approval.request':
-            // Deny approvals automatically so the run does not hang.
             void denyApproval(baseUrl, apiKey, runId);
             break;
           case 'run.completed':
@@ -251,8 +295,6 @@ export async function streamHermesRunCompletion({
   );
 
   if (!completed) {
-    // Stream ended without explicit completion; this is acceptable for
-    // interrupted or short runs, but surface a warning in dev builds.
     if (process.env.NODE_ENV === 'development') {
       console.warn('[Hermes] run events stream closed without run.completed');
     }

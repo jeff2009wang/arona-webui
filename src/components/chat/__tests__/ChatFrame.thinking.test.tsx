@@ -19,11 +19,16 @@ vi.mock('../ChatHeader', () => ({
 vi.mock('../ChatComposer', () => ({ ChatComposer: () => <div data-testid="chat-composer" /> }));
 vi.mock('../EmptyChatState', () => ({ EmptyChatState: () => <div data-testid="empty-state" /> }));
 vi.mock('../AnimatedMessage', () => ({
-  AnimatedMessage: (p: { message: { id: string; role: string; content: string } }) => (
-    <div data-testid={`message-${p.message.id}`}>
-      {p.message.role}:{p.message.content}
-    </div>
-  ),
+  AnimatedMessage: (p: { message: { id: string; role: string; content: string | import('../../../types').MessageNode[] } }) => {
+    const contentStr = Array.isArray(p.message.content)
+      ? p.message.content.map((n: import('../../../types').MessageNode) => (n.type === 'text' ? (n as import('../../../types').TextNode).content : '')).join('')
+      : p.message.content;
+    return (
+      <div data-testid={`message-${p.message.id}`}>
+        {p.message.role}:{contentStr}
+      </div>
+    );
+  },
 }));
 vi.mock('../ThinkingBubble', () => ({
   ThinkingBubble: (p: { reasoning?: string }) => (
@@ -36,7 +41,7 @@ vi.mock('../ToolActivityGroup', () => ({
   ToolActivityGroup: () => <div data-testid="tool-activity-group">tools</div>,
 }));
 
-const baseAssistant = { id: 'm2', role: 'assistant' as const, content: '', createdAt: Date.now() };
+const baseAssistant = { id: 'm2', role: 'assistant' as const, content: [] as import('../../../types').MessageNode[], createdAt: Date.now() };
 const mockSession: Session = {
   id: 's1',
   title: 'Test',
@@ -76,28 +81,26 @@ describe('ChatFrame thinking state', () => {
     cleanup();
   });
 
-  it('shows a single ThinkingBubble while assistant message is empty and streaming', () => {
+  it('renders the assistant message even when empty and streaming', () => {
     render(<ChatFrame />);
-    expect(screen.getByTestId('thinking-bubble')).toBeInTheDocument();
+    expect(screen.getByTestId(`message-${baseAssistant.id}`)).toBeInTheDocument();
     expect(screen.queryByTestId('typing-indicator')).toBeNull();
-    expect(screen.queryByTestId(`message-${baseAssistant.id}`)).toBeNull();
   });
 
-  it('surfaces reasoning inside the same ThinkingBubble', () => {
+  it('renders the assistant message with reasoning nodes', () => {
     const sessionWithReasoning: Session = {
       ...mockSession,
       messages: [
         mockSession.messages[0],
-        { ...baseAssistant, reasoning: 'step one' },
+        { ...baseAssistant, content: [{ type: 'reasoning', content: 'step one' }] },
       ],
     };
     vi.mocked(useSessionStore).mockImplementation((selector: (state: SessionState) => unknown) =>
       selector({ ...mockSessionStoreStreaming, currentSession: sessionWithReasoning } as SessionState)
     );
     render(<ChatFrame />);
-    expect(screen.getByText('thinking:step one')).toBeInTheDocument();
+    expect(screen.getByTestId(`message-${baseAssistant.id}`)).toBeInTheDocument();
     expect(screen.queryByTestId('typing-indicator')).toBeNull();
-    expect(screen.queryByTestId(`message-${baseAssistant.id}`)).toBeNull();
   });
 
   it('renders the assistant message normally once content arrives', () => {
@@ -105,7 +108,7 @@ describe('ChatFrame thinking state', () => {
       ...mockSession,
       messages: [
         mockSession.messages[0],
-        { ...baseAssistant, content: 'hello' },
+        { ...baseAssistant, content: [{ type: 'text', content: 'hello' }] },
       ],
     };
     vi.mocked(useSessionStore).mockImplementation((selector: (state: SessionState) => unknown) =>
@@ -113,29 +116,19 @@ describe('ChatFrame thinking state', () => {
     );
     render(<ChatFrame />);
     expect(screen.getByTestId(`message-${baseAssistant.id}`)).toHaveTextContent('assistant:hello');
-    expect(screen.queryByTestId('thinking-bubble')).toBeNull();
     expect(screen.queryByTestId('typing-indicator')).toBeNull();
   });
 
-  it('keeps thinking bubble above tool calls while assistant is empty and streaming', () => {
+  it('renders assistant message with reasoning and tool nodes', () => {
     const sessionWithTool: Session = {
       ...mockSession,
       messages: [
         mockSession.messages[0],
-        baseAssistant,
         {
-          id: 'm3',
-          role: 'tool' as const,
-          content: '',
-          createdAt: Date.now(),
-          toolCalls: [
-            {
-              id: 'tc1',
-              name: 'web_search',
-              arguments: { query: 'test' },
-              status: 'running' as const,
-              startedAt: Date.now(),
-            },
+          ...baseAssistant,
+          content: [
+            { type: 'reasoning', content: 'thinking...' },
+            { type: 'tool_call', id: 'tc1', name: 'web_search', arguments: { query: 'test' }, status: 'running' as const, startedAt: Date.now() },
           ],
         },
       ],
@@ -144,8 +137,7 @@ describe('ChatFrame thinking state', () => {
       selector({ ...mockSessionStoreStreaming, currentSession: sessionWithTool } as SessionState)
     );
     render(<ChatFrame />);
-    expect(screen.getByTestId('thinking-bubble')).toBeInTheDocument();
-    expect(screen.getByTestId('tool-activity-group')).toBeInTheDocument();
-    expect(screen.queryByTestId(`message-${baseAssistant.id}`)).toBeNull();
+    expect(screen.getByTestId(`message-${baseAssistant.id}`)).toHaveTextContent('assistant:');
+    expect(screen.queryByTestId('tool-activity-group')).toBeNull();
   });
 });

@@ -13,11 +13,18 @@ export function MessageActions({ message, onCopy, onRegenerate }: MessageActions
   const [copied, setCopied] = useState(false);
   const isAi = message.role === 'assistant' || message.role === 'tool';
 
+  const textContent = Array.isArray(message.content)
+    ? message.content
+        .filter((n) => n.type === 'text')
+        .map((n) => (n as { content: string }).content)
+        .join('')
+    : message.content;
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(message.content);
+      await navigator.clipboard.writeText(textContent);
       setCopied(true);
-      onCopy?.(message.content);
+      onCopy?.(textContent);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback: silently ignore
